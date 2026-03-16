@@ -10,6 +10,7 @@ load_dotenv()
 ENTSOE_KEY = os.getenv('ENTSOE_KEY')
 DATA_DIR = os.getenv('DATA_DIR')
 ENERGY_PRICES_DIR = os.getenv('ENERGY_PRICES_DIR')
+SLEEP_TIME = float(os.getenv('SLEEP_TIME', 0.3))
 
 # Download energy prices from ENTSOE API and save to CSV file
 
@@ -40,9 +41,8 @@ def download_energy_prices(year=2026):
 
 
 years = [2020, 2021, 2022, 2023, 2024, 2025, 2026]
-# years = [2025]
 
 for year in years:
-    sleep(0.3)  # Sleep for 300 milliseconds to avoid hitting API rate limits
+    sleep(SLEEP_TIME)  # Sleep for the specified time to avoid hitting API rate limits
     download_energy_prices(year)
 
