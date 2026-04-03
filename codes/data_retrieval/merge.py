@@ -16,6 +16,10 @@ TIME_SERIES_FILES = [
 	{'name': 'weather', 'file': 'weather.csv', 'merge_key': 'valid_time'},
 ]
 
+DAILY_FILES = [ 
+	{'name': 'natural_gas_prices', 'file': 'natural_gas_prices.csv', 'merge_key': 'time'}, # https://www.investing.com/commodities/ice-dutch-ttf-gas-c1-futures-historical-data
+]
+
 YEARLY_FILES = [
 	{'name': 'energy_capacities', 'file': 'energy_capacities.csv', 'merge_key': 'year'},
 ]
@@ -74,6 +78,34 @@ for time_value, merged_row in rows_by_time.items():
 
 year_columns = []
 values_by_year = {}
+
+for spec in DAILY_FILES:
+	input_path = os.path.join(DATA_DIR, spec['file'])
+	require_file(input_path)
+
+	with open(input_path, 'r', newline='') as f:
+		reader = csv.DictReader(f)
+		if spec['merge_key'] not in reader.fieldnames:
+			raise ValueError(f"Merge key '{spec['merge_key']}' not found in {spec['file']}")
+
+		for row in reader:
+			date_value = (row.get(spec['merge_key']) or '').strip()
+			if not date_value:
+				continue
+
+			year_value = parse_year_from_time(date_value)
+			if not year_value:
+				continue
+
+			if year_value not in values_by_year:
+				values_by_year[year_value] = {}
+
+			prefixed = prefixed_columns(spec['name'], row, spec['merge_key'])
+			for col_name, value in prefixed.items():
+				if col_name not in year_columns:
+					year_columns.append(col_name)
+				if value != '':
+					values_by_year[year_value][col_name] = value
 
 for spec in YEARLY_FILES:
 	input_path = os.path.join(DATA_DIR, spec['file'])
