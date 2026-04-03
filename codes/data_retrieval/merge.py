@@ -1,4 +1,5 @@
 import csv
+import math
 import os
 from datetime import datetime
 from dotenv import load_dotenv
@@ -208,6 +209,14 @@ for merged_row in rows_by_time.values():
 	for old_col, new_col in column_translations.items():
 		if old_col in merged_row:
 			merged_row[new_col] = merged_row.pop(old_col)
+
+# Create wind column as the magnitude of u100 and v100
+for merged_row in rows_by_time.values():
+	u = float(merged_row.get('wind_u100', '0') or '0')
+	v = float(merged_row.get('wind_v100', '0') or '0')
+	merged_row['wind'] = math.sqrt(u**2 + v**2)
+	if 'wind' not in time_columns:
+		time_columns.append('wind')
 
 output_path = os.path.join(DATA_DIR, OUTPUT_FILE)
 header = ['time', 'year', 'month', 'day_of_week', 'hour'] + time_columns + year_columns + day_columns
