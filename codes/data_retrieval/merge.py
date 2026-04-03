@@ -97,8 +97,8 @@ for time_value, merged_row in rows_by_time.items():
 	merged_row['day_of_week'] = parse_day_of_week_from_time(time_value)
 	merged_row['hour'] = parse_hour_from_time(time_value)
 
-year_columns = []
-values_by_year = {}
+day_columns = []
+values_by_day = {}
 
 for spec in DAILY_FILES:
 	input_path = os.path.join(DATA_DIR, spec['file'])
@@ -110,23 +110,22 @@ for spec in DAILY_FILES:
 			raise ValueError(f"Merge key '{spec['merge_key']}' not found in {spec['file']}")
 
 		for row in reader:
-			date_value = (row.get(spec['merge_key']) or '').strip()
-			if not date_value:
+			day_value = (row.get(spec['merge_key']) or '').strip()[:10]
+			if not day_value:
 				continue
 
-			year_value = parse_year_from_time(date_value)
-			if not year_value:
-				continue
-
-			if year_value not in values_by_year:
-				values_by_year[year_value] = {}
+			if day_value not in values_by_day:
+				values_by_day[day_value] = {}
 
 			prefixed = prefixed_columns(spec['name'], row, spec['merge_key'])
 			for col_name, value in prefixed.items():
-				if col_name not in year_columns:
-					year_columns.append(col_name)
+				if col_name not in day_columns:
+					day_columns.append(col_name)
 				if value != '':
-					values_by_year[year_value][col_name] = value
+					values_by_day[day_value][col_name] = value
+
+year_columns = []
+values_by_year = {}
 
 for spec in YEARLY_FILES:
 	input_path = os.path.join(DATA_DIR, spec['file'])
@@ -156,6 +155,10 @@ for merged_row in rows_by_time.values():
 	year_value = merged_row.get('year', '')
 	if year_value in values_by_year:
 		merged_row.update(values_by_year[year_value])
+	
+	day_value = merged_row.get('time', '')[:10]  # Extract date part from time
+	if day_value in values_by_day:
+		merged_row.update(values_by_day[day_value])
 
 # Add column for days since the start of war in Ukraine (2022-02-24)
 war_start_date = datetime(2022, 2, 24)
@@ -170,8 +173,44 @@ for time_value, merged_row in rows_by_time.items():
 		# If time_value is not a valid date, skip this calculation
 		continue
 
+# time,year,month,day_of_week,hour,days_since_war,energy_prices_price,energy_sources_B01,energy_sources_B04,energy_sources_B11,energy_sources_B16,energy_sources_B19,energy_sources_B20,weather_u100,weather_v100,weather_t2m,weather_ssrd,weather_tp,natural_gas_prices_Price,natural_gas_prices_Vol.,energy_capacities_B01,energy_capacities_B04,energy_capacities_B11,energy_capacities_B16,energy_capacities_B19,energy_capacities_B20
+
+column_translations = {
+	'energy_prices_price': 'energy_price',
+	'energy_sources_B01': 'biomass_production',
+	'energy_sources_B04': 'gas_production',
+	'energy_sources_B11': 'hydro_production',
+	'energy_sources_B16': 'solar_production',
+	'energy_sources_B19': 'wind_production',
+	'energy_sources_B20': 'other_production',
+	'weather_u100': 'wind_u100',
+	'weather_v100': 'wind_v100',
+	'weather_t2m': 'temperature',
+	'weather_ssrd': 'sun',
+	'weather_tp': 'precipitation',
+	'natural_gas_prices_Price': 'gas_price',
+	'natural_gas_prices_Vol.': 'gas_volume',
+	'energy_capacities_B01': 'biomass_capacity',
+	'energy_capacities_B04': 'gas_capacity',
+	'energy_capacities_B11': 'hydro_capacity',
+	'energy_capacities_B16': 'solar_capacity',
+	'energy_capacities_B19': 'wind_capacity',
+	'energy_capacities_B20': 'other_capacity',
+}
+
+# Rename the header columns based on the translations
+time_columns = [column_translations.get(col, col) for col in time_columns]
+year_columns = [column_translations.get(col, col) for col in year_columns]
+day_columns = [column_translations.get(col, col) for col in day_columns]
+
+# Rename fields in rows_by_time based on the translations
+for merged_row in rows_by_time.values():
+	for old_col, new_col in column_translations.items():
+		if old_col in merged_row:
+			merged_row[new_col] = merged_row.pop(old_col)
+
 output_path = os.path.join(DATA_DIR, OUTPUT_FILE)
-header = ['time', 'year', 'month', 'day_of_week', 'hour'] + time_columns + year_columns
+header = ['time', 'year', 'month', 'day_of_week', 'hour'] + time_columns + year_columns + day_columns
 
 with open(output_path, 'w', newline='') as f:
 	writer = csv.DictWriter(f, fieldnames=header)
