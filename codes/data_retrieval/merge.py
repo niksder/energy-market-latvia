@@ -157,6 +157,19 @@ for merged_row in rows_by_time.values():
 	if year_value in values_by_year:
 		merged_row.update(values_by_year[year_value])
 
+# Add column for days since the start of war in Ukraine (2022-02-24)
+war_start_date = datetime(2022, 2, 24)
+for time_value, merged_row in rows_by_time.items():
+	try:
+		current_date = datetime.fromisoformat(time_value)
+		days_since_war = (current_date - war_start_date).days
+		merged_row['days_since_war'] = max(0, days_since_war + 1)
+		if 'days_since_war' not in time_columns:
+			time_columns.insert(0, 'days_since_war')
+	except ValueError:
+		# If time_value is not a valid date, skip this calculation
+		continue
+
 output_path = os.path.join(DATA_DIR, OUTPUT_FILE)
 header = ['time', 'year', 'month', 'day_of_week', 'hour'] + time_columns + year_columns
 
