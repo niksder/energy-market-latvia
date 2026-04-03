@@ -55,7 +55,7 @@ twoway ///
 	xtitle("Market price (TTF futures, EUR/MWh)") ///
 	ytitle("Household price (EUR/MWh)") ///
 	legend(order(1 "Observations" 2 "Linear fit") pos(6) ring(0)) ///
-	name(g_household, replace)
+	name(g_household, replace) nodraw
 
 twoway ///
 	(scatter non_household_price ttf_futures_price if !missing(non_household_price, ttf_futures_price), ///
@@ -66,7 +66,7 @@ twoway ///
 	xtitle("Market price (TTF futures, EUR/MWh)") ///
 	ytitle("Non-household price (EUR/MWh)") ///
 	legend(order(1 "Observations" 2 "Linear fit") pos(6) ring(0)) ///
-	name(g_nonhousehold, replace)
+	name(g_nonhousehold, replace) nodraw
 
 graph combine g_household g_nonhousehold, cols(2) ///
 	title("Bi-yearly Gas Price Relationships") ///
