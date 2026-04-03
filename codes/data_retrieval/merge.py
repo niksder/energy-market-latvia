@@ -35,6 +35,24 @@ def parse_year_from_time(time_value):
 		return str(datetime.fromisoformat(time_value).year)
 	except ValueError:
 		return ''
+	
+def parse_month_from_time(time_value):
+	try:
+		return str(datetime.fromisoformat(time_value).month)
+	except ValueError:
+		return ''
+	
+def parse_day_of_week_from_time(time_value):
+	try:
+		return str(datetime.fromisoformat(time_value).weekday())
+	except ValueError:
+		return ''
+	
+def parse_hour_from_time(time_value):
+	try:
+		return str(datetime.fromisoformat(time_value).hour)
+	except ValueError:
+		return ''
 
 
 def prefixed_columns(dataset_name, row, excluded_key):
@@ -75,6 +93,9 @@ for spec in TIME_SERIES_FILES:
 
 for time_value, merged_row in rows_by_time.items():
 	merged_row['year'] = parse_year_from_time(time_value)
+	merged_row['month'] = parse_month_from_time(time_value)
+	merged_row['day_of_week'] = parse_day_of_week_from_time(time_value)
+	merged_row['hour'] = parse_hour_from_time(time_value)
 
 year_columns = []
 values_by_year = {}
@@ -137,7 +158,7 @@ for merged_row in rows_by_time.values():
 		merged_row.update(values_by_year[year_value])
 
 output_path = os.path.join(DATA_DIR, OUTPUT_FILE)
-header = ['time', 'year'] + time_columns + year_columns
+header = ['time', 'year', 'month', 'day_of_week', 'hour'] + time_columns + year_columns
 
 with open(output_path, 'w', newline='') as f:
 	writer = csv.DictWriter(f, fieldnames=header)
