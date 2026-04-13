@@ -1,3 +1,4 @@
+import bisect
 import csv
 import math
 import os
@@ -19,6 +20,10 @@ TIME_SERIES_FILES = [
 
 DAILY_FILES = [ 
 	{'name': 'natural_gas_prices', 'file': 'natural_gas_prices.csv', 'merge_key': 'time'}, # https://www.investing.com/commodities/ice-dutch-ttf-gas-c1-futures-historical-data
+]
+
+WEEKLY_FILES = [
+	{'name': 'water_storage', 'file': 'water_storage.csv', 'merge_key': 'week_start'},
 ]
 
 YEARLY_FILES = [
@@ -125,6 +130,35 @@ for spec in DAILY_FILES:
 				if value != '':
 					values_by_day[day_value][col_name] = value
 
+week_columns = []
+values_by_week = {}
+
+for spec in WEEKLY_FILES:
+	input_path = os.path.join(DATA_DIR, spec['file'])
+	require_file(input_path)
+
+	with open(input_path, 'r', newline='') as f:
+		reader = csv.DictReader(f)
+		if spec['merge_key'] not in reader.fieldnames:
+			raise ValueError(f"Merge key '{spec['merge_key']}' not found in {spec['file']}")
+
+		for row in reader:
+			week_value = (row.get(spec['merge_key']) or '').strip()
+			if not week_value:
+				continue
+
+			if week_value not in values_by_week:
+				values_by_week[week_value] = {}
+
+			prefixed = prefixed_columns(spec['name'], row, spec['merge_key'])
+			for col_name, value in prefixed.items():
+				if col_name not in week_columns:
+					week_columns.append(col_name)
+				if value != '':
+					values_by_week[week_value][col_name] = value
+
+week_starts_sorted = sorted(values_by_week.keys())
+
 year_columns = []
 values_by_year = {}
 
@@ -156,10 +190,17 @@ for merged_row in rows_by_time.values():
 	year_value = merged_row.get('year', '')
 	if year_value in values_by_year:
 		merged_row.update(values_by_year[year_value])
-	
+
 	day_value = merged_row.get('time', '')[:10]  # Extract date part from time
 	if day_value in values_by_day:
 		merged_row.update(values_by_day[day_value])
+
+	# Weekly merge: find the most recent week_start <= current timestamp
+	time_value = merged_row.get('time', '')
+	if week_starts_sorted and time_value:
+		idx = bisect.bisect_right(week_starts_sorted, time_value[:19]) - 1
+		if idx >= 0:
+			merged_row.update(values_by_week[week_starts_sorted[idx]])
 
 # Add column for days since the start of war in Ukraine (2022-02-24)
 war_start_date = datetime(2022, 2, 24)
@@ -197,12 +238,14 @@ column_translations = {
 	'energy_capacities_B16': 'solar_capacity',
 	'energy_capacities_B19': 'wind_capacity',
 	'energy_capacities_B20': 'other_capacity',
+	'water_storage_water_storage_mwh': 'water_storage',
 }
 
 # Rename the header columns based on the translations
 time_columns = [column_translations.get(col, col) for col in time_columns]
 year_columns = [column_translations.get(col, col) for col in year_columns]
 day_columns = [column_translations.get(col, col) for col in day_columns]
+week_columns = [column_translations.get(col, col) for col in week_columns]
 
 # Rename fields in rows_by_time based on the translations
 for merged_row in rows_by_time.values():
@@ -219,7 +262,7 @@ for merged_row in rows_by_time.values():
 		time_columns.append('wind')
 
 output_path = os.path.join(DATA_DIR, OUTPUT_FILE)
-header = ['time', 'year', 'month', 'day_of_week', 'hour'] + time_columns + year_columns + day_columns
+header = ['time', 'year', 'month', 'day_of_week', 'hour'] + time_columns + year_columns + day_columns + week_columns
 
 with open(output_path, 'w', newline='') as f:
 	writer = csv.DictWriter(f, fieldnames=header)
