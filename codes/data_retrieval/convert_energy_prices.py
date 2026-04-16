@@ -37,16 +37,20 @@ for year in YEARS:
                 position = int(point.find(f'{{{NS}}}position').text)
                 price = float(point.find(f'{{{NS}}}price.amount').text)
                 dt = start_dt + (position - 1) * delta
-                rows.append((dt.strftime('%Y-%m-%d %H:%M:%S'), price))
+                # Truncate to the hour so 15-min prices get averaged per hour
+                dt_hour = dt.replace(minute=0, second=0, microsecond=0)
+                rows.append((dt_hour.strftime('%Y-%m-%d %H:%M:%S'), price))
 
-# Sort by time and deduplicate
-rows.sort(key=lambda r: r[0])
-seen = set()
-unique_rows = []
-for row in rows:
-    if row[0] not in seen:
-        seen.add(row[0])
-        unique_rows.append(row)
+# Average prices within the same hour, then sort
+from collections import defaultdict
+hour_prices = defaultdict(list)
+for time_str, price in rows:
+    hour_prices[time_str].append(price)
+
+unique_rows = sorted(
+    [(t, sum(prices) / len(prices)) for t, prices in hour_prices.items()],
+    key=lambda r: r[0],
+)
 
 output_path = os.path.join(DATA_DIR, 'energy_prices.csv')
 with open(output_path, 'w', newline='') as f:

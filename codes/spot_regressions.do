@@ -1,6 +1,7 @@
 cls
 clear
 
+cd "/home/niks/Projects/solar-power-latvia"
 do "codes/load_data.do"
 
 *******************
