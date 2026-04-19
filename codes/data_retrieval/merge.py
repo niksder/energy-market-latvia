@@ -261,6 +261,25 @@ for merged_row in rows_by_time.values():
 	if 'wind' not in time_columns:
 		time_columns.append('wind')
 
+# Create gas_price_weekly rolling average column
+gas_price_weekly_values = []
+for time_value in sorted(rows_by_time.keys()):
+	merged_row = rows_by_time[time_value]
+	gas_price = merged_row.get('gas_price')
+	if gas_price is not None:
+		try:
+			gas_price_weekly_values.append(float(gas_price))
+		except ValueError:
+			pass  # Ignore non-numeric values
+
+	if len(gas_price_weekly_values) > 0: # Roll over the week (merged data is hourly)
+		merged_row['gas_price_weekly'] = sum(gas_price_weekly_values[-168:]) / min(len(gas_price_weekly_values[-168:]), 168)
+	else:
+		merged_row['gas_price_weekly'] = ''
+
+	if 'gas_price_weekly' not in time_columns:
+		time_columns.append('gas_price_weekly')
+
 output_path = os.path.join(DATA_DIR, OUTPUT_FILE)
 header = ['time', 'year', 'month', 'day_of_week', 'hour'] + time_columns + year_columns + day_columns + week_columns
 
