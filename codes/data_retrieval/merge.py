@@ -215,6 +215,25 @@ for time_value, merged_row in rows_by_time.items():
 		# If time_value is not a valid date, skip this calculation
 		continue
 
+# Add electricity_exports: Latvia's net export trade balance from crossborder flows
+crossborder_path = os.path.join(DATA_DIR, 'crossborder_flows.csv')
+if os.path.exists(crossborder_path):
+	with open(crossborder_path, 'r', newline='') as f:
+		reader = csv.DictReader(f)
+		for row in reader:
+			time_value = (row.get('time') or '').strip()
+			if not time_value or time_value not in rows_by_time:
+				continue
+			lv_ee = float(row.get('LV_EE', '') or 0)
+			lv_lt = float(row.get('LV_LT', '') or 0)
+			lv_ru = float(row.get('LV_RU', '') or 0)
+			ee_lv = float(row.get('EE_LV', '') or 0)
+			lt_lv = float(row.get('LT_LV', '') or 0)
+			ru_lv = float(row.get('RU_LV', '') or 0)
+			rows_by_time[time_value]['electricity_exports'] = (lv_ee + lv_lt + lv_ru) - (ee_lv + lt_lv + ru_lv)
+	if 'electricity_exports' not in time_columns:
+		time_columns.append('electricity_exports')
+
 # time,year,month,day_of_week,hour,days_since_war,energy_prices_price,energy_sources_B01,energy_sources_B04,energy_sources_B11,energy_sources_B16,energy_sources_B19,energy_sources_B20,weather_u100,weather_v100,weather_t2m,weather_ssrd,weather_tp,natural_gas_prices_Price,natural_gas_prices_Vol.,energy_capacities_B01,energy_capacities_B04,energy_capacities_B11,energy_capacities_B16,energy_capacities_B19,energy_capacities_B20
 
 column_translations = {
