@@ -10,6 +10,9 @@ format ms %tc
 gen date = dofc(ms)
 format date %td
 
+// Drop observations starting from 2026-01-01
+drop if date >= td(01jan2026)
+
 // Integer hour count since 1960-01-01 — avoids floating-point delta issues
 gen long t = round(ms / 3600000)
 label variable t "Hours since 1960-01-01 00:00:00"
