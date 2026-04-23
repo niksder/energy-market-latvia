@@ -16,7 +16,10 @@ bysort year month: egen precipitation_monthly_avg = sum(precipitation)
 // Plot over time the monthly average of energy price and gas price
 twoway (line energy_price_monthly_avg date) ///
     (line gas_price_monthly_avg date), ///
-    title("Monthly Average Energy Price and Gas Price Over Time") ///
+    title("Monthly Average Energy Price and Natural Gas Price") ///
+    legend(label(1 "Latvia's Wholesale Energy Price") label(2 "Dutch TTF Natural Gas Futures Price")) ///
+    legend(position(6)) ///
+    xlabel(#7, format(%tdMon_CCYY) angle(45)) ///
     xtitle("Date") ///
     ytitle("Price")
 
@@ -27,7 +30,8 @@ graph export "outputs/monthly_avg_energy_gas_price.png", replace
 // Plot over time the monthly average of energy price and precipitation
 twoway (line energy_price_monthly_avg date) ///
     (line precipitation_monthly_avg date), ///
-    title("Monthly Average Energy Price and Precipitation Over Time") ///
+    title("Latvia's Energy Price and Precipitation Over Time") ///
+    legend(label(1 "Energy Price") label(2 "Precipitation")) ///
     xtitle("Date") ///
     ytitle("Price / Precipitation")
 
@@ -38,7 +42,8 @@ graph export "outputs/monthly_avg_energy_precipitation.png", replace
 // Plot over time the monthly average of energy price and sun
 twoway (line energy_price_monthly_avg date) ///
     (line sun_monthly_avg date), ///
-    title("Monthly Average Energy Price and Sun Over Time") ///
+    title("Monthly Average Latvia's Energy Price and Sun Over Time") ///
+    legend(label(1 "Energy Price") label(2 "Sun")) ///
     xtitle("Date") ///
     ytitle("Price / Sun")
 
@@ -49,8 +54,9 @@ graph export "outputs/monthly_avg_energy_sun.png", replace
 // Scatter
 twoway (scatter energy_price_monthly_avg gas_price_monthly_avg) ///
     (lfit energy_price_monthly_avg gas_price_monthly_avg), ///
-    title("Monthly Average Energy Price vs Gas Price") ///
-    xtitle("Monthly Average Gas Price") ///
+    title("Monthly Average Latvia's Energy Price vs Natural Gas Futures Price") ///
+    legend(label(1 "Energy Price") label(2 "Gas Price")) ///
+    xtitle("Monthly Average Natural Gas Price") ///
     ytitle("Monthly Average Energy Price")
 
 // Save the plot
