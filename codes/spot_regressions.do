@@ -20,8 +20,10 @@ reg ln_energy_price ln_gas_price i.hour i.day_of_week i.month
 
 * Add controls for weather variables
 
+gen sun_x_solar_capacity = ln_sun * solar_capacity
+
 reg ln_energy_price ln_gas_price ///
-    temperature wind sun ln_water_storage precipitation ///
+    temperature wind sun_x_solar_capacity ln_water_storage precipitation precipitation_weekly precipitation_monthly ///
     i.hour i.day_of_week i.month, vce(cluster date)
 
 
@@ -39,7 +41,7 @@ twoway (line energy_price_mean date, sort) ///
        xtitle("Date") ytitle("Energy Price")
 
 // Save the plot
-graph export "outputs/actual_vs_estimated_energy_price.png", replace
+graph export "outputs/actual_vs_estimated_energy_price3.png", replace
 
 * Check the effect of war as a dummy
 

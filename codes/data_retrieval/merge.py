@@ -299,6 +299,34 @@ for time_value in sorted(rows_by_time.keys()):
 	if 'gas_price_weekly' not in time_columns:
 		time_columns.append('gas_price_weekly')
 
+# Create accumulated precipitation
+precipitation_values = []
+for time_value in sorted(rows_by_time.keys()):
+	merged_row = rows_by_time[time_value]
+	precipitation = merged_row.get('precipitation')
+	if precipitation is not None:
+		try:
+			precipitation_values.append(float(precipitation))
+		except ValueError:
+			pass  # Ignore non-numeric values
+
+	if len(precipitation_values) > 0: # Accumulate over the past 24 hours (merged data is hourly) and 168 hours (weekly)
+		merged_row['precipitation_24h'] = sum(precipitation_values[-24:])
+		merged_row['precipitation_weekly'] = sum(precipitation_values[-168:])
+		merged_row['precipitation_monthly'] = sum(precipitation_values[-720:])
+	else:
+		merged_row['precipitation_24h'] = ''
+		merged_row['precipitation_weekly'] = ''
+		merged_row['precipitation_monthly'] = ''
+
+	if 'precipitation_24h' not in time_columns:
+		time_columns.append('precipitation_24h')
+	if 'precipitation_weekly' not in time_columns:
+		time_columns.append('precipitation_weekly')
+	if 'precipitation_monthly' not in time_columns:
+		time_columns.append('precipitation_monthly')
+
+
 output_path = os.path.join(DATA_DIR, OUTPUT_FILE)
 header = ['time', 'year', 'month', 'day_of_week', 'hour'] + time_columns + year_columns + day_columns + week_columns
 

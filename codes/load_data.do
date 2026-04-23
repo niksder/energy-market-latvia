@@ -26,6 +26,7 @@ gen ln_gas_price_weekly = ln(gas_price_weekly)
 gen ln_gas_price = ln(gas_price)
 gen ln_precipitation = ln(precipitation + 1) // Add 1 to avoid log(0)
 gen ln_water_storage = ln(water_storage + 1) // Add 1 to avoid log(0)
+gen ln_sun = ln(sun + 1) // Add 1 to avoid log(0)
 
 gen war = days_since_war > 0
 
