@@ -22,8 +22,10 @@ lpirf ln_energy_price ln_gas_price, lags(1 2 3 4) ///
         i.hour i.day_of_week i.month, vce(cluster date)
 } */
 
+gen sun_x_solar_capacity = ln_sun * solar_capacity
+
 reg ln_energy_price ln_gas_price L(0/3).ln_gas_price_weekly ///
-    temperature wind sun ln_water_storage precipitation ///
+    temperature wind ln_sun sun_x_solar_capacity ln_water_storage precipitation precipitation_weekly precipitation_monthly ///
     i.hour i.day_of_week i.month
 
 // Plot real price and estimated price on a timeline
