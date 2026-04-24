@@ -26,6 +26,105 @@ twoway (line energy_price_monthly_avg date) ///
 // Save the plot
 graph export "outputs/monthly_avg_energy_gas_price.png", replace
 
+preserve
+
+    // Define monthly averages
+    /* bysort month year: egen energy_price_monthly_avg = mean(energy_price)
+    bysort month year: egen gas_price_monthly_avg = mean(gas_price) */
+
+    gen ln_energy_price_monthly_avg = ln(energy_price_monthly_avg)
+    gen ln_gas_price_monthly_avg = ln(gas_price_monthly_avg)
+
+    // Leave only the monthly averages in the dataset
+    keep month year date ln_energy_price_monthly_avg ln_gas_price_monthly_avg
+    // Drop duplicate months
+    bysort month year: keep if _n == 1
+    
+    tsset year month, monthly
+
+    // Define ln difference monthly variables
+    gen d_ln_energy_price = D.ln_energy_price_monthly_avg
+    gen d_ln_gas_price = D.ln_gas_price_monthly_avg
+
+    // Plot bar diagram over time the log differences of just gas price (and no energy price)
+    twoway bar d_ln_gas_price date, ///
+        barwidth(6) ///
+        title("Monthly Log Difference of Natural Gas Price Over Time") ///
+        xlabel(#7, format(%tdMon_CCYY) angle(45)) ///
+        legend(off)
+
+    // Save the plot
+    graph export "outputs/monthly_log_diff_energy_gas_price.png", replace
+
+restore
+
+
+preserve
+
+    // Define weekly averages
+    bysort week year: egen energy_price_weekly_avg = mean(energy_price)
+    bysort week year: egen gas_price_weekly_avg = mean(gas_price)
+
+    gen ln_energy_price_weekly_avg = ln(energy_price_weekly_avg)
+    gen ln_gas_price_weekly_avg = ln(gas_price_weekly_avg)
+
+    // Leave only the weekly averages in the dataset
+    keep week year date ln_energy_price_weekly_avg ln_gas_price_weekly_avg
+    // Drop duplicate weeks
+    bysort week year: keep if _n == 1
+    
+    tsset year week, weekly
+
+    // Define ln difference weekly variables
+    gen d_ln_energy_price = D.ln_energy_price_weekly_avg
+    gen d_ln_gas_price = D.ln_gas_price_weekly_avg
+
+    // Plot bar diagram over time the log differences of just gas price (and no energy price)
+    twoway bar d_ln_gas_price date, ///
+        barwidth(6) ///
+        title("Weekly Log Difference of Natural Gas Price Over Time") ///
+        xlabel(#7, format(%tdMon_CCYY) angle(45)) ///
+        legend(off)
+
+    // Save the plot
+    graph export "outputs/weekly_log_diff_energy_gas_price.png", replace
+
+restore
+
+
+preserve
+
+    // Define daily averages
+    bysort date: egen energy_price_daily_avg = mean(energy_price)
+    bysort date: egen gas_price_daily_avg = mean(gas_price)
+
+    gen ln_energy_price_daily_avg = ln(energy_price_daily_avg)
+    gen ln_gas_price_daily_avg = ln(gas_price_daily_avg)
+
+    // Leave only the daily averages in the dataset
+    keep date ln_energy_price_daily_avg ln_gas_price_daily_avg
+    // Drop duplicate days
+    bysort date: keep if _n == 1
+    
+    tsset date, daily
+
+    // Define ln difference daily variables
+    gen d_ln_energy_price = D.ln_energy_price_daily_avg
+    gen d_ln_gas_price = D.ln_gas_price_daily_avg
+
+    // Plot bar diagram over time the log differences of just gas price (and no energy price)
+    twoway bar d_ln_gas_price date, ///
+        barwidth(6) ///
+        title("Daily Log Difference of Natural Gas Price Over Time") ///
+        xlabel(#7, format(%tdMon_CCYY) angle(45)) ///
+        legend(off)
+
+    // Save the plot
+    graph export "outputs/daily_log_diff_energy_gas_price.png", replace
+
+restore
+
+
 
 // Plot over time the monthly average of energy price and precipitation
 twoway (line energy_price_monthly_avg date) ///

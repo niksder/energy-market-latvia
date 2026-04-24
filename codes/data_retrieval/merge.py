@@ -16,6 +16,7 @@ TIME_SERIES_FILES = [
 	{'name': 'energy_prices', 'file': 'energy_prices.csv', 'merge_key': 'time'},
 	{'name': 'energy_sources', 'file': 'energy_sources.csv', 'merge_key': 'time'},
 	{'name': 'weather', 'file': 'weather.csv', 'merge_key': 'valid_time'},
+	{'name': 'energy_prices_europe', 'file': 'energy_prices_europe.csv', 'merge_key': 'time'},
 ]
 
 DAILY_FILES = [ 
@@ -57,6 +58,12 @@ def parse_day_of_week_from_time(time_value):
 def parse_hour_from_time(time_value):
 	try:
 		return str(datetime.fromisoformat(time_value).hour)
+	except ValueError:
+		return ''
+	
+def parse_week_of_year_from_time(time_value):
+	try:
+		return str(datetime.fromisoformat(time_value).isocalendar()[1])
 	except ValueError:
 		return ''
 
@@ -102,6 +109,7 @@ for time_value, merged_row in rows_by_time.items():
 	merged_row['month'] = parse_month_from_time(time_value)
 	merged_row['day_of_week'] = parse_day_of_week_from_time(time_value)
 	merged_row['hour'] = parse_hour_from_time(time_value)
+	merged_row['week_of_year'] = parse_week_of_year_from_time(time_value)
 
 day_columns = []
 values_by_day = {}
@@ -234,10 +242,24 @@ if os.path.exists(crossborder_path):
 	if 'electricity_exports' not in time_columns:
 		time_columns.append('electricity_exports')
 
+# Add temperature_europe from weather_europe.csv (t2m column only)
+weather_europe_path = os.path.join(DATA_DIR, 'weather_europe.csv')
+if os.path.exists(weather_europe_path):
+	with open(weather_europe_path, 'r', newline='') as f:
+		reader = csv.DictReader(f)
+		for row in reader:
+			time_value = (row.get('valid_time') or '').strip()
+			if not time_value or time_value not in rows_by_time:
+				continue
+			rows_by_time[time_value]['temperature_europe'] = row.get('t2m', '')
+	if 'temperature_europe' not in time_columns:
+		time_columns.append('temperature_europe')
+
 # time,year,month,day_of_week,hour,days_since_war,energy_prices_price,energy_sources_B01,energy_sources_B04,energy_sources_B11,energy_sources_B16,energy_sources_B19,energy_sources_B20,weather_u100,weather_v100,weather_t2m,weather_ssrd,weather_tp,natural_gas_prices_Price,natural_gas_prices_Vol.,energy_capacities_B01,energy_capacities_B04,energy_capacities_B11,energy_capacities_B16,energy_capacities_B19,energy_capacities_B20
 
 column_translations = {
 	'energy_prices_price': 'energy_price',
+	'energy_prices_europe_price': 'energy_price_europe',
 	'energy_sources_B01': 'biomass_production',
 	'energy_sources_B04': 'gas_production',
 	'energy_sources_B11': 'hydro_production',
@@ -328,7 +350,7 @@ for time_value in sorted(rows_by_time.keys()):
 
 
 output_path = os.path.join(DATA_DIR, OUTPUT_FILE)
-header = ['time', 'year', 'month', 'day_of_week', 'hour'] + time_columns + year_columns + day_columns + week_columns
+header = ['time', 'year', 'month', 'week_of_year', 'day_of_week', 'hour'] + time_columns + year_columns + day_columns + week_columns
 
 with open(output_path, 'w', newline='') as f:
 	writer = csv.DictWriter(f, fieldnames=header)

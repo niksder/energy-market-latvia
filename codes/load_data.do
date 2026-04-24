@@ -26,6 +26,7 @@ replace precipitation = precipitation * 1000
 // Define ln variables
 gen ln_energy_price = ln(energy_price)
 gen ln_gas_price_weekly = ln(gas_price_weekly)
+gen ln_energy_price_europe = ln(energy_price_europe)
 gen ln_gas_price = ln(gas_price)
 gen ln_precipitation = ln(precipitation + 1) // Add 1 to avoid log(0)
 gen ln_water_storage = ln(water_storage + 1) // Add 1 to avoid log(0)
@@ -34,3 +35,6 @@ gen ln_sun = ln(sun + 1) // Add 1 to avoid log(0)
 gen war = days_since_war > 0
 
 tsset t
+
+do "codes/gen_gas_resid.do"
+
