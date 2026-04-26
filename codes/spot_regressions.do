@@ -20,12 +20,9 @@ reg ln_energy_price ln_gas_price i.hour i.day_of_week i.month
 
 * Add controls for weather variables
 
-gen sun_x_solar_capacity = ln_sun * solar_capacity
-
 reg ln_energy_price ln_gas_price ///
     temperature wind ln_sun sun_x_solar_capacity ln_water_storage precipitation precipitation_weekly precipitation_monthly ///
     i.hour i.day_of_week i.month, vce(cluster date)
-
 
 // Plot real price and estimated price on a timeline
 predict ln_energy_price_hat, xb
