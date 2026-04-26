@@ -4,8 +4,8 @@ clear
 cd "/home/niks/Projects/solar-power-latvia"
 do "codes/load_daily_data.do"
 
-// Create daily_gas_lp_symmetric directory ONLY if it doesn't exist
-cap mkdir "outputs/daily_gas_lp_symmetric"
+// Create daily_energy_price_lp_symmetric directory ONLY if it doesn't exist
+cap mkdir "outputs/daily_energy_price_lp_symmetric"
 
 local H = 14   // 2 weeks
 
@@ -73,7 +73,7 @@ twoway ///
     ytitle("Response of electricity price")
 
 // Save the plot
-graph export "outputs/daily_gas_lp_symmetric/daily_irf_gas_shock.png", replace
+graph export "outputs/daily_energy_price_lp_symmetric/daily_irf_gas_shock.png", replace
 
 // Plot the cumulative response
 
@@ -90,7 +90,7 @@ twoway ///
     ytitle("Cumulative response of electricity price")
 
 // Save the plot
-graph export "outputs/daily_gas_lp_symmetric/daily_cumulative_irf_gas_shock.png", replace
+graph export "outputs/daily_energy_price_lp_symmetric/daily_cumulative_irf_gas_shock.png", replace
 
 
 replace beta = beta * (1 / 0.10)
@@ -131,7 +131,7 @@ twoway ///
     ytitle("Effect on electricity price")
 
 // Save the plot
-graph export "outputs/daily_gas_lp_symmetric/daily_irf_invasion_shock.png", replace
+graph export "outputs/daily_energy_price_lp_symmetric/daily_irf_invasion_shock.png", replace
 
 gen cum_war  = sum(war_effect)
 gen cum_war_u = sum(war_upper)
@@ -146,7 +146,7 @@ twoway ///
     ytitle("Cumulative effect on electricity price")
 
 // Save the plot
-graph export "outputs/daily_gas_lp_symmetric/daily_cumulative_irf_invasion_shock.png", replace
+graph export "outputs/daily_energy_price_lp_symmetric/daily_cumulative_irf_invasion_shock.png", replace
 
 /***********************************************************************************
 ************ PLOT THE IRF OF THE INVASION SHOCK FOR 2 WEEK INVASION WINDOW *********
@@ -175,7 +175,7 @@ twoway ///
     xtitle("Days after invasion start") ///
     ytitle("Effect on electricity price (full invasion window)")
 
-graph export "outputs/daily_gas_lp_symmetric/daily_irf_invasion_full.png", replace
+graph export "outputs/daily_energy_price_lp_symmetric/daily_irf_invasion_full.png", replace
 
 gen cum_invasion   = sum(invasion_effect)
 gen cum_invasion_u = sum(invasion_upper)
@@ -189,4 +189,4 @@ twoway ///
     xtitle("Days after invasion start") ///
     ytitle("Cumulative effect on electricity price (full invasion window)")
 
-graph export "outputs/daily_gas_lp_symmetric/daily_cumulative_irf_invasion_full.png", replace
+graph export "outputs/daily_energy_price_lp_symmetric/daily_cumulative_irf_invasion_full.png", replace
