@@ -16,8 +16,8 @@ postfile `results' h beta se using irf_lp, replace
 ************ LOCAL PROJECTIONS FOR GAS SHOCK ****************
 ************************************************************/
 
-gen shock_smooth = (gas_resid_daily + L1.gas_resid_daily)/2
-replace gas_resid_daily = shock_smooth
+/* gen shock_smooth = (gas_resid_daily + L1.gas_resid_daily)/2
+replace gas_resid_daily = shock_smooth */
 
 forvalues h = 0/`H' {
 
