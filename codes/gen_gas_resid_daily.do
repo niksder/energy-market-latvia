@@ -2,10 +2,10 @@
 gen d_ln_gas_price = D.ln_gas_price
 gen d_ln_energy_price_europe = D.ln_energy_price_europe
 reg d_ln_gas_price ///
-    L(1/3).d_ln_gas_price ///
+    L(1/7).d_ln_gas_price ///
     L(1/3).d_ln_energy_price_europe ///
     hdd_europe cdd_europe ///
-    i.month
+    i.day_of_week i.month
 
 predict gas_resid_daily, resid
 
