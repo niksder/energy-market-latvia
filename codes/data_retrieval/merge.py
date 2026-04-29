@@ -349,6 +349,82 @@ for time_value in sorted(rows_by_time.keys()):
 		time_columns.append('precipitation_monthly')
 
 
+# Impute 2023 solar_production from monthly ENB statistics, distributed proportionally to sun. Data from https://stat.gov.lv/lv/statistikas-temas/noz/energetika/tabulas/enb010m-elektroenergijas-razosana-imports-eksports-un?themeCode=EN
+ENB_SOLAR_FILE = os.path.join(DATA_DIR, 'constants', 'ENB010m_20260429-171145.csv')
+if os.path.exists(ENB_SOLAR_FILE):
+	enb_monthly_solar = {}  # {(year, month): total_mwh}
+	with open(ENB_SOLAR_FILE, 'r', newline='', encoding='utf-8-sig') as f:
+		reader = csv.reader(f)
+		next(reader)  # title row
+		next(reader)  # blank line
+		headers = next(reader)  # "Rādītāji", "2020M01", ...
+		for row in reader:
+			if not row:
+				continue
+			if 'saules' not in row[0].lower():
+				continue
+			for i, col_header in enumerate(headers):
+				if i == 0 or 'M' not in col_header:
+					continue
+				try:
+					year_str, month_str = col_header.split('M')
+					year_key = int(year_str)
+					month_key = int(month_str)
+					value_str = (row[i] if i < len(row) else '').strip()
+					if value_str and value_str not in ('…', '..', ''):
+						enb_monthly_solar[(year_key, month_key)] = float(value_str) * 1000  # million kWh -> MWh
+				except (ValueError, IndexError):
+					continue
+			break  # only need the solar row
+
+	# Group row keys by (year, month)
+	yearmonth_groups = {}
+	for time_value in rows_by_time:
+		try:
+			dt = datetime.fromisoformat(time_value)
+			key = (dt.year, dt.month)
+			if key not in yearmonth_groups:
+				yearmonth_groups[key] = []
+			yearmonth_groups[key].append(time_value)
+		except ValueError:
+			continue
+
+	# Zero out solar_production for all pre-2023 rows (production was negligible)
+	for (year, month), time_values in yearmonth_groups.items():
+		if year >= 2023:
+			continue
+		for tv in time_values:
+			merged_row = rows_by_time[tv]
+			if merged_row.get('solar_production', '') == '':
+				merged_row['solar_production'] = 0.0
+
+	# Distribute monthly totals proportionally to sun for months missing solar_production
+	for (year, month), time_values in yearmonth_groups.items():
+		if year != 2023:
+			continue
+		monthly_total_mwh = enb_monthly_solar.get((year, month), 0.0)
+
+		# Sum sun across all hours in the month as the denominator
+		total_sun = 0.0
+		for tv in time_values:
+			try:
+				total_sun += max(0.0, float(rows_by_time[tv].get('sun') or 0))
+			except (ValueError, TypeError):
+				pass
+
+		for tv in time_values:
+			merged_row = rows_by_time[tv]
+			if merged_row.get('solar_production', '') != '':
+				continue  # already has data
+			try:
+				sun_val = max(0.0, float(merged_row.get('sun') or 0))
+			except (ValueError, TypeError):
+				sun_val = 0.0
+			if total_sun > 0:
+				merged_row['solar_production'] = monthly_total_mwh * sun_val / total_sun
+			else:
+				merged_row['solar_production'] = 0.0
+
 output_path = os.path.join(DATA_DIR, OUTPUT_FILE)
 header = ['time', 'year', 'month', 'week_of_year', 'day_of_week', 'hour'] + time_columns + year_columns + day_columns + week_columns
 
