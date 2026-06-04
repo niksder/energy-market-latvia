@@ -44,25 +44,26 @@ SOURCE_LABELS = {
 
 # ── Source colors — edit hex values here to change the palette ────────────────────────────────────────────
 SOURCE_COLORS = {
-    'gas_prod_yearly':        "#ca1313",  # red
-    'brown_coal_prod_yearly': '#8B4513',  # saddle brown
-    'coal_gas_prod_yearly':   '#6b6b6b',  # medium grey
-    'hard_coal_prod_yearly':  '#222222',  # near-black
-    'oil_prod_yearly':        '#5C3317',  # dark brown
-    'oil_shale_prod_yearly':  '#c8a96e',  # tan
-    'peat_prod_yearly':       '#7a5c2e',  # mud brown
-    'hydro_ps_prod_yearly':   '#08519c',  # deep blue
-    'hydro_ror_prod_yearly':  '#6baed6',  # light blue
-    'hydro_wr_prod_yearly':   '#2171b5',  # medium blue
-    'wind_off_prod_yearly':   '#41ab5d',  # teal green
-    'wind_on_prod_yearly':    '#74c476',  # light green
-    'solar_prod_yearly':      '#ffd700',  # gold
+    'gas_prod_yearly':        '#b03a2e',  # muted crimson
+    'brown_coal_prod_yearly': '#7d4e24',  # dark brown
+    'coal_gas_prod_yearly':   '#909497',  # cool grey
+    'hard_coal_prod_yearly':  '#212f3d',  # near-black slate
+    'oil_prod_yearly':        '#9a6b1a',  # amber brown
+    'oil_shale_prod_yearly':  '#c9a97a',  # pale tan
+    'peat_prod_yearly':       '#6b5344',  # dark khaki
+    'hydro_ps_prod_yearly':   '#154360',  # deep navy
+    'hydro_ror_prod_yearly':  '#5499c7',  # muted sky blue
+    'hydro_wr_prod_yearly':   '#1f618d',  # medium blue
+    'wind_off_prod_yearly':   '#1d6a3a',  # forest green
+    'wind_on_prod_yearly':    '#58b07a',  # sage green
+    'solar_prod_yearly':      "#e7be36",  # muted gold
 }
 
 ALL_SOURCES = list(SOURCE_LABELS.keys())
 
 
-def plot_energy_mix(bzone: str) -> None:
+def plot_energy_mix(bzone: str, start_year: int = 2017, end_year: int = 2025) -> None:
+    years = list(range(start_year, end_year + 1))
     usecols = ['bzone', 'time', 'total_generation'] + ALL_SOURCES
     df = pd.read_csv(MERGED_PANEL_DATA_PATH, usecols=usecols, dtype={'bzone': 'category'})
     df['time'] = pd.to_datetime(df['time'], utc=True, format='mixed')
@@ -76,7 +77,7 @@ def plot_energy_mix(bzone: str) -> None:
 
     df = df.set_index('time').sort_index()
     df['total_gen_yearly'] = df['total_generation'].rolling('365D').sum()
-    df = df[df.index.year != 2016]
+    df = df[df.index.year.isin(years)]
     monthly = df[ALL_SOURCES + ['total_gen_yearly']].resample('ME').mean()
 
     # Only plot sources that have at least some non-zero data for this zone
@@ -112,5 +113,7 @@ def plot_energy_mix(bzone: str) -> None:
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Plot the energy mix of a bidding zone over time.')
     parser.add_argument('bzone', help='Bidding zone name (e.g. Latvia, Poland, SE1)')
+    parser.add_argument('--start-year', type=int, default=2017)
+    parser.add_argument('--end-year', type=int, default=2025)
     args = parser.parse_args()
-    plot_energy_mix(args.bzone)
+    plot_energy_mix(args.bzone, start_year=args.start_year, end_year=args.end_year)
