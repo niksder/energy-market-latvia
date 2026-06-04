@@ -9,6 +9,8 @@ format ms %tc
 gen date = dofc(ms)
 format date %td
 
+drop if country == "Switzerland" // Not in EU
+
 // Drop observations before 2017-01-01 and after 2026-01-01
 drop if date < td(01jan2017) | date >= td(01jan2026)
 
