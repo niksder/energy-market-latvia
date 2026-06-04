@@ -9,7 +9,7 @@ PANEL_DATA_DIR = os.getenv('PANEL_DATA_DIR')
 DATA_DIR = os.getenv('DATA_DIR')
 
 CONSTANTS_DIR = os.path.join(DATA_DIR, os.getenv('CONSTANTS_DIR', 'constants'))
-ENB_SOLAR_FILE = os.path.join(CONSTANTS_DIR, 'ENB010m_20260429-171145.csv')
+ENB_SOLAR_FILE = os.path.join(CONSTANTS_DIR, 'ENB010m_20260429-171145.csv') # https://stat.gov.lv/lv/statistikas-temas/noz/energetika/tabulas/enb010m-elektroenergijas-razosana-imports-eksports-un
 EUROSTAT_GDP_PPS_FILE = os.path.join(CONSTANTS_DIR, 'tec00114_linear_2_0.csv') # https://ec.europa.eu/eurostat/databrowser/explore/all/t_economy?sort=category&lang=en&subtheme=t_na10.t_nama10.t_nama_10_ma&display=list
 EUROSTAT_POPULATION_DENSITY_FILE = os.path.join(CONSTANTS_DIR, 'tps00003_linear_2_0.csv') # https://ec.europa.eu/eurostat/databrowser/view/tps00003/default/table
 ENERGY_PRICES_DIR = os.getenv('ENERGY_PRICES_DIR')
