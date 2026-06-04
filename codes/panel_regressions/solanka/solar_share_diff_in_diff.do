@@ -4,6 +4,11 @@ clear
 cd "/home/niks/Projects/solar-power-latvia"
 do "codes/panel_regressions/load_daily_data.do"
 
+// Count bzones dynamically
+quietly levelsof bzone_id, local(_bzone_list)
+local n_bzones : word count `_bzone_list'
+di "Number of bzones in data: `n_bzones'"
+
 cap mkdir "outputs/panel/solar_diff_and_diff/solanka"
 
 // =============================================================================
@@ -142,8 +147,8 @@ foreach k of local hy_pos_vals {
         scalar _es_coef_`i'   = 0
         scalar _es_lb_`i'     = 0
         scalar _es_ub_`i'     = 0
-        scalar _es_lb90_`i'   = 0
-        scalar _es_ub90_`i'   = 0
+        // scalar _es_lb90_`i'   = 0
+        // scalar _es_ub90_`i'   = 0
     }
     else {
         scalar _es_period_`i' = `k' - 8
@@ -152,9 +157,9 @@ foreach k of local hy_pos_vals {
         quietly boottest inter_hy`k', boottype(wild) cluster(bzone_id) reps(9999) seed(42) level(95) // Wild cluster bootstrap for robust inference with few clusters
         scalar _es_lb_`i'     = r(CI)[1,1]
         scalar _es_ub_`i'     = r(CI)[1,2]
-        quietly boottest inter_hy`k', boottype(wild) cluster(bzone_id) reps(9999) seed(42) level(90)
-        scalar _es_lb90_`i'   = r(CI)[1,1]
-        scalar _es_ub90_`i'   = r(CI)[1,2]
+        // quietly boottest inter_hy`k', boottype(wild) cluster(bzone_id) reps(9999) seed(42) level(90)
+        // scalar _es_lb90_`i'   = r(CI)[1,1]
+        // scalar _es_ub90_`i'   = r(CI)[1,2]
     }
     local i = `i' + 1
 }
@@ -171,23 +176,23 @@ preserve
     gen coef   = .
     gen lb95   = .
     gen ub95   = .
-    gen lb90   = .
-    gen ub90   = .
+    // gen lb90   = .
+    // gen ub90   = .
 
     forvalues i = 1/`nper' {
         replace period = _es_period_`i' in `i'
         replace coef   = _es_coef_`i'   in `i'
         replace lb95   = _es_lb_`i'     in `i'
         replace ub95   = _es_ub_`i'     in `i'
-        replace lb90   = _es_lb90_`i'   in `i'
-        replace ub90   = _es_ub90_`i'   in `i'
+        // replace lb90   = _es_lb90_`i'   in `i'
+        // replace ub90   = _es_ub90_`i'   in `i'
     }
 
     sort period
 
     twoway ///
         (rcap lb95 ub95 period, lcolor(navy%30)) ///
-        (rcap lb90 ub90 period, lcolor(navy%55)) ///
+        /* (rcap lb90 ub90 period, lcolor(navy%55)) */ ///
         (connected coef period, ///
             mcolor(navy) lcolor(navy) msymbol(circle) lpattern(solid)), ///
         yline(0, lpattern(dash) lcolor(gray)) ///
@@ -205,7 +210,8 @@ preserve
         title("Effect of Pre-War Gas Exposure on Solar Share") ///
         subtitle("DiD event study; reference = H2 2020; red line = invasion Feb 24 2022") ///
         note("Two-way FE (bidding zone, time). Controls: month for seasonality." ///
-             "SE clustered at bzone level (N = 14 bzones).", size(vsmall)) ///
+             "Wild cluster bootstrapping used for SE at bzone level (N = `n_bzones' bzones)." ///
+             "95% confidence intervals reported.", size(vsmall)) ///
         scheme(s2color)
 
     graph export "outputs/panel/solar_diff_and_diff/solanka/event_study_solar_share.png", ///
