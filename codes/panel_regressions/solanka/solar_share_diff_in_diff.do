@@ -11,20 +11,20 @@ cap mkdir "outputs/panel/solar_diff_and_diff/solanka"
 // gas_share is available from load_daily_data.do
 // =============================================================================
 
-// Pre-war gas share: value on Feb 23 2022 (fixed treatment intensity per bzone)
+// Pre-war gas share: value on Feb 23 2021 (fixed treatment intensity per bzone)
 gen _tmp = gas_share if date == td(23feb2021)
 bysort bzone_id: egen gas_share_pre = max(_tmp)
 drop _tmp
-label var gas_share_pre "Gas share on Feb 23 2022 (pre-war, 0–1)"
+label var gas_share_pre "Gas share on Feb 23 2021 (pre-war, 0–1)"
 
-// Pre-war solar share: value on Feb 23 2022 (baseline solar penetration per bzone)
-gen _tmp2 = solar_share if date == td(23feb2022)
+// Pre-war solar share: value on Feb 23 2021 (baseline solar penetration per bzone)
+gen _tmp2 = solar_share if date == td(23feb2021)
 bysort bzone_id: egen solar_share_pre = max(_tmp2)
 drop _tmp2
-label var solar_share_pre "Solar share on Feb 23 2022 (pre-war baseline, 0–1)"
+label var solar_share_pre "Solar share on Feb 23 2021 (pre-war baseline, 0–1)"
 
 gen coal_share_pre = brown_coal_share + hard_coal_share
-label var coal_share_pre "Coal share on Feb 23 2022 (%)"
+label var coal_share_pre "Coal share on Feb 23 2021 (%)"
 
 // Verify treatment values
 di "Pre-war gas share by bzone:"
@@ -202,9 +202,9 @@ preserve
         legend(off) ///
         xtitle("Half-year period") ///
         ytitle("Coef (% per pp of pre-war gas share)") ///
-        title("Effect of pre-war gas exposure on solar share") ///
+        title("Effect of Pre-War Gas Exposure on Solar Share") ///
         subtitle("DiD event study; reference = H2 2020; red line = invasion Feb 24 2022") ///
-        note("Two-way FE (bzone + date). Controls: sun, temperature, ln_precipitation." ///
+        note("Two-way FE (bidding zone, time). Controls: month for seasonality." ///
              "SE clustered at bzone level (N = 14 bzones).", size(vsmall)) ///
         scheme(s2color)
 
