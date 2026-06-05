@@ -40,7 +40,7 @@ drop if bzone == "Germany" | bzone == "Portugal" | bzone == "Romania" | bzone ==
 //drop if bzone == "Germany" || bzone == "Bulgaria" || bzone == "Ireland" || bzone == "Czechia" || bzone == "Netherlands" || bzone == "Greece" || bzone == "Estonia" || bzone == "Poland" || bzone == "Cyprus"
 drop if bzone == "IT_NORTH" | bzone == "IT_CNOR" | bzone == "IT_CSUD" | bzone == "IT_SUD" | bzone == "IT_CALA" | bzone == "IT_SICI" | bzone == "IT_SARD" | bzone == "IT_SACOAC" | bzone == "IT_SACODC"
 
-// drop if bzone == "Croatia" // Missing data in 2017-2018
+drop if bzone == "Croatia" // Missing data in 2017-2018
 
 // Count bzones dynamically
 quietly levelsof bzone_id, local(_bzone_list)
@@ -229,7 +229,7 @@ preserve
     sort period
 
     twoway ///
-        (rcap lb95 ub95 period, lcolor(navy%30)) ///
+        /* (rcap lb95 ub95 period, lcolor(navy%30)) */ ///
         (rcap lb90 ub90 period, lcolor(navy%55)) ///
         (connected coef period, ///
             mcolor(navy) lcolor(navy) msymbol(circle) lpattern(solid)), ///
@@ -247,11 +247,12 @@ preserve
         ytitle("Coef (% per pp of pre-war fossil share)") ///
         title("Effect of pre-war fossil exposure on solar share") ///
         subtitle("DiD event study; reference = H2 2020; red line = invasion Feb 24 2022") ///
-        note("Two-way FE (bzone + date). Controls: sun, temperature, ln_precipitation." ///
-             "SE clustered at bzone level (N = 14 bzones).", size(vsmall)) ///
+        note("Two-way FE (bidding zone, time). Controls: month for seasonality." ///
+             "Wild cluster bootstrapping used for SE at bzone level (N = `n_bzones' bidding zones)." ///
+             "90% confidence intervals reported.", size(vsmall)) ///
         scheme(s2color)
 
-    graph export "outputs/panel/solar_diff_and_diff/on_fossil_share/event_study_solar_share.png", ///
+    graph export "outputs/panel/solar_diff_and_diff/on_fossil_share/event_study_solar_share_no_croatia.png", ///
         replace width(1400) height(900)
     // -------------------------------------------------------------------------
     // LATVIA-SPECIFIC EFFECT: coef × Latvia's pre-war fossil share
@@ -270,7 +271,7 @@ preserve
     }
 
     twoway ///
-        (rcap lb95 ub95 period, lcolor(maroon%30)) ///
+        /* (rcap lb95 ub95 period, lcolor(maroon%30)) */ ///
         (rcap lb90 ub90 period, lcolor(maroon%55)) ///
         (connected coef period, ///
             mcolor(maroon) lcolor(maroon) msymbol(circle) lpattern(solid)), ///
@@ -288,11 +289,12 @@ preserve
         ytitle("Extra solar share (pp) vs. zero-fossil-dependence counterfactual") ///
         title("Latvia: solar share attributable to pre-war fossil dependence") ///
         subtitle("DiD coefs × Latvia fossil share (`lv_fossil_fmt' pp); ref = H2 2020; red = invasion") ///
-        note("Each point = estimated extra pp of solar share Latvia gained relative to a country with no pre-war fossil dependence." ///
-             "Two-way FE (bzone + date). SE clustered at bzone level (N = 14 bzones).", size(vsmall)) ///
+        note("Two-way FE (bidding zone, time). Controls: month for seasonality." ///
+             "Wild cluster bootstrapping used for SE at bzone level (N = `n_bzones' bidding zones)." ///
+             "90% confidence intervals reported.", size(vsmall)) ///
         scheme(s2color)
 
-    graph export "outputs/panel/solar_diff_and_diff/on_fossil_share/event_study_latvia_effect_solar_share.png", ///
+    graph export "outputs/panel/solar_diff_and_diff/on_fossil_share/event_study_latvia_effect_solar_share_no_croatia.png", ///
         replace width(1400) height(900)
 restore
 
@@ -305,7 +307,7 @@ local lv_fossil_fmt : di %5.1f `lv_fossil'
 
 tempname fh_tex
 file open `fh_tex' using ///
-    "outputs/panel/solar_diff_and_diff/on_fossil_share/event_study_latvia_effect_solar_share.tex", ///
+    "outputs/panel/solar_diff_and_diff/on_fossil_share/event_study_latvia_effect_solar_share_no_croatia.tex", ///
     write replace
 
 file write `fh_tex' "\begin{table}[htbp]" _n
@@ -379,6 +381,6 @@ file write `fh_tex' "\end{table}" _n
 
 file close `fh_tex'
 
-di "LaTeX table saved to outputs/panel/solar_diff_and_diff/on_fossil_share/event_study_latvia_effect_solar_share.tex"
+di "LaTeX table saved to outputs/panel/solar_diff_and_diff/on_fossil_share/event_study_latvia_effect_solar_share_no_croatia.tex"
 di "Done. Outputs saved to outputs/panel/solar_diff_and_diff/on_fossil_share/"
 
