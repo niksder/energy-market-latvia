@@ -7,11 +7,45 @@ do "codes/panel_regressions/load_daily_data.do"
 cap mkdir "outputs/panel/solar_diff_and_diff/on_fossil_share"
 
 
-// Drop NL, GR, HU, PT, ES that have higher gas share than LV
+/* // Drop NL, GR, HU, PT, ES that have higher gas share than LV
 drop if bzone == "Netherlands" | bzone == "Greece" | bzone == "Hungary" | bzone == "Portugal" | bzone == "Spain" 
 
 // Drop bzones with higher fossil share than Latvia
-drop if bzone == "Poland" | bzone == "Estonia" | bzone == "Czechia" | bzone == "Germany" | bzone == "Romania" | bzone == "Bulgaria" | bzone == "Croatia"
+drop if bzone == "Poland" | bzone == "Estonia" | bzone == "Czechia" | bzone == "Germany" | bzone == "Romania" | bzone == "Bulgaria" | bzone == "Croatia" */
+
+/* Italy (IT\_CNOR) & 36.4\% \\
+Germany & 36.5\% \\
+Portugal & 37.0\% \\
+Romania & 37.7\% \\
+Hungary & 37.8\% \\
+Bulgaria & 45.3\% \\
+Italy (IT\_SUD) & 45.5\% \\
+Ireland & 46.1\% \\
+Czechia & 47.7\% \\
+Italy (IT\_NORTH) & 48.5\% \\
+Italy (IT\_CSUD) & 53.2\% \\
+Netherlands & 54.2\% \\
+Italy (IT\_SICI) & 59.4\% \\
+Estonia & 64.1\% \\
+Greece & 65.9\% \\
+Italy (IT\_SARD) & 69.1\% \\
+Italy (IT\_CALA) & 79.7\% \\
+Poland & 85.6\% \\
+Cyprus & 94.8\% \\
+Italy (IT\_SACOAC) & .\% \\
+Italy (IT\_SACODC) & .\% \\ */
+
+drop if bzone == "Germany" | bzone == "Portugal" | bzone == "Romania" | bzone == "Hungary" | bzone == "Bulgaria" | bzone == "Czechia" | bzone == "Ireland" | bzone == "Netherlands" | bzone == "Greece" | bzone == "Estonia" | bzone == "Poland" | bzone == "Cyprus"
+
+//drop if bzone == "Germany" || bzone == "Bulgaria" || bzone == "Ireland" || bzone == "Czechia" || bzone == "Netherlands" || bzone == "Greece" || bzone == "Estonia" || bzone == "Poland" || bzone == "Cyprus"
+drop if bzone == "IT_NORTH" | bzone == "IT_CNOR" | bzone == "IT_CSUD" | bzone == "IT_SUD" | bzone == "IT_CALA" | bzone == "IT_SICI" | bzone == "IT_SARD" | bzone == "IT_SACOAC" | bzone == "IT_SACODC"
+
+// drop if bzone == "Croatia" // Missing data in 2017-2018
+
+// Count bzones dynamically
+quietly levelsof bzone_id, local(_bzone_list)
+local n_bzones : word count `_bzone_list'
+di "Number of bzones in data: `n_bzones'"
 
 // =============================================================================
 // TREATMENT VARIABLE: pre-war fossil share (Feb 23 2021, last day before invasion)
@@ -130,6 +164,8 @@ xtreg solar_share `inter_vars' /*solar_share_pre*/ ///
     /*i.day_of_week*/ i.month ib8.hy_seq_pos, ///
     fe vce(cluster bzone_id)
 eststo event_solar
+scalar _ev_N   = e(N)
+scalar _ev_r2w = e(r2_w)
 
 /*     temperature hdd cdd wind ln_sun precipitation precipitation_weekly precipitation_monthly /// // excluded since weather does not affect solar growth */
 
@@ -147,6 +183,8 @@ foreach k of local hy_pos_vals {
         scalar _es_ub_`i'     = 0
         scalar _es_lb90_`i'   = 0
         scalar _es_ub90_`i'   = 0
+        scalar _es_wse_`i'    = 0
+        scalar _es_wp_`i'     = .
     }
     else {
         scalar _es_period_`i' = `k' - 8
@@ -155,6 +193,8 @@ foreach k of local hy_pos_vals {
         quietly boottest inter_hy`k', boottype(wild) cluster(bzone_id) reps(9999) seed(42) level(95) // Wild cluster bootstrap for robust inference with few clusters
         scalar _es_lb_`i'     = r(CI)[1,1]
         scalar _es_ub_`i'     = r(CI)[1,2]
+        scalar _es_wse_`i'    = (r(CI)[1,2] - r(CI)[1,1]) / (2 * invnormal(0.975))
+        scalar _es_wp_`i'     = r(p)
         quietly boottest inter_hy`k', boottype(wild) cluster(bzone_id) reps(9999) seed(42) level(90)
         scalar _es_lb90_`i'   = r(CI)[1,1]
         scalar _es_ub90_`i'   = r(CI)[1,2]
@@ -256,5 +296,89 @@ preserve
         replace width(1400) height(900)
 restore
 
+// =============================================================================
+// LATEX TABLE: Latvia-specific event study (coefs × Latvia fossil share)
+// =============================================================================
+local d = char(36)   // dollar sign for LaTeX math mode
+local lv_fossil = scalar(lv_fossil_share_pre)
+local lv_fossil_fmt : di %5.1f `lv_fossil'
+
+tempname fh_tex
+file open `fh_tex' using ///
+    "outputs/panel/solar_diff_and_diff/on_fossil_share/event_study_latvia_effect_solar_share.tex", ///
+    write replace
+
+file write `fh_tex' "\begin{table}[htbp]" _n
+file write `fh_tex' "\centering" _n
+file write `fh_tex' "\caption{Event study: Latvia solar share attributable to pre-war fossil dependence}" _n
+file write `fh_tex' "\label{tab:event_study_latvia_solar}" _n
+file write `fh_tex' "\begin{tabular}{lc}" _n
+file write `fh_tex' "\hline\hline" _n
+file write `fh_tex' "Period & Extra solar share (pp) \\" _n
+file write `fh_tex' " & {\footnotesize (wild cluster-robust SE)} \\" _n
+file write `fh_tex' "\hline" _n
+
+forvalues i = 1/`nper' {
+    local per_val = scalar(_es_period_`i')
+    local k_val   = `per_val' + 8
+    if mod(`k_val', 2) == 1 {
+        local sem "H1"
+        local yr  = 2017 + (`k_val' - 1) / 2
+    }
+    else {
+        local sem "H2"
+        local yr  = 2016 + `k_val' / 2
+    }
+    local per_label "`sem' `yr'"
+
+    if `per_val' == 0 {
+        file write `fh_tex' "`per_label' & 0 \\" _n
+        file write `fh_tex' "       & {\footnotesize \textit{(reference)}} \\" _n
+    }
+    else {
+        local coef_val = scalar(_es_coef_`i') * `lv_fossil'
+        local wse_val  = scalar(_es_wse_`i')  * `lv_fossil'
+        local wp_val   = scalar(_es_wp_`i')
+
+        if `wp_val' < 0.01      local stars "`d'^{***}`d'"
+        else if `wp_val' < 0.05 local stars "`d'^{**}`d'"
+        else if `wp_val' < 0.10 local stars "`d'^{*}`d'"
+        else                    local stars ""
+
+        local coef_str = strtrim(string(`coef_val', "%10.4f"))
+        local wse_str  = strtrim(string(`wse_val',  "%10.4f"))
+
+        file write `fh_tex' "`per_label' & `coef_str'`stars' \\" _n
+        file write `fh_tex' "       & (`wse_str') \\" _n
+    }
+
+    if `per_val' == 2 {
+        file write `fh_tex' "\hline" _n
+    }
+}
+
+local ev_N   = scalar(_ev_N)
+local ev_r2w = strtrim(string(scalar(_ev_r2w), "%6.4f"))
+
+file write `fh_tex' "\hline\hline" _n
+file write `fh_tex' "\multicolumn{2}{p{0.6\linewidth}}{\footnotesize" _n
+file write `fh_tex' " \textit{Note}: Two-way FE (bidding zone and semester)." _n
+file write `fh_tex' " Dependent variable: solar share (\%)." _n
+file write `fh_tex' " Coefficients are DiD estimates scaled by Latvia's pre-war fossil share (`lv_fossil_fmt' pp)." _n
+file write `fh_tex' " Reference period: H2~2020." _n
+file write `fh_tex' " Observations: `ev_N'; within \(R^2\): `ev_r2w'." _n
+file write `fh_tex' " Standard errors in parentheses are implied by the 95\% wild cluster bootstrap CI," _n
+file write `fh_tex' " clustered at the bidding-zone level" _n
+file write `fh_tex' " (\(N=`n_bzones'\) bidding zones, 9{,}999 replications)." _n
+file write `fh_tex' " Stars indicate significance of the wild cluster bootstrap \(p\)-value:" _n
+file write `fh_tex' " `d'^{***}`d' \(p<0.01\)," _n
+file write `fh_tex' " `d'^{**}`d' \(p<0.05\)," _n
+file write `fh_tex' " `d'^{*}`d' \(p<0.10\).} \\" _n
+file write `fh_tex' "\end{tabular}" _n
+file write `fh_tex' "\end{table}" _n
+
+file close `fh_tex'
+
+di "LaTeX table saved to outputs/panel/solar_diff_and_diff/on_fossil_share/event_study_latvia_effect_solar_share.tex"
 di "Done. Outputs saved to outputs/panel/solar_diff_and_diff/on_fossil_share/"
 
