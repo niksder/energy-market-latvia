@@ -13,28 +13,6 @@ drop if bzone == "Netherlands" | bzone == "Greece" | bzone == "Hungary" | bzone 
 // Drop bzones with higher fossil share than Latvia
 drop if bzone == "Poland" | bzone == "Estonia" | bzone == "Czechia" | bzone == "Germany" | bzone == "Romania" | bzone == "Bulgaria" | bzone == "Croatia" */
 
-/* Italy (IT\_CNOR) & 36.4\% \\
-Germany & 36.5\% \\
-Portugal & 37.0\% \\
-Romania & 37.7\% \\
-Hungary & 37.8\% \\
-Bulgaria & 45.3\% \\
-Italy (IT\_SUD) & 45.5\% \\
-Ireland & 46.1\% \\
-Czechia & 47.7\% \\
-Italy (IT\_NORTH) & 48.5\% \\
-Italy (IT\_CSUD) & 53.2\% \\
-Netherlands & 54.2\% \\
-Italy (IT\_SICI) & 59.4\% \\
-Estonia & 64.1\% \\
-Greece & 65.9\% \\
-Italy (IT\_SARD) & 69.1\% \\
-Italy (IT\_CALA) & 79.7\% \\
-Poland & 85.6\% \\
-Cyprus & 94.8\% \\
-Italy (IT\_SACOAC) & .\% \\
-Italy (IT\_SACODC) & .\% \\ */
-
 drop if bzone == "Germany" | bzone == "Portugal" | bzone == "Romania" | bzone == "Hungary" | bzone == "Bulgaria" | bzone == "Czechia" | bzone == "Ireland" | bzone == "Netherlands" | bzone == "Greece" | bzone == "Estonia" | bzone == "Poland" | bzone == "Cyprus"
 
 //drop if bzone == "Germany" || bzone == "Bulgaria" || bzone == "Ireland" || bzone == "Czechia" || bzone == "Netherlands" || bzone == "Greece" || bzone == "Estonia" || bzone == "Poland" || bzone == "Cyprus"
