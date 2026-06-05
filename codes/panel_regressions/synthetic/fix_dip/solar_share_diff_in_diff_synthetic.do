@@ -3,7 +3,7 @@ clear
 
 cd "/home/niks/Projects/solar-power-latvia"
 do "codes/panel_regressions/load_daily_data.do"
-
+/* 
 // Drop NL, GR, HU, PT, ES that have higher gas share than LV
 drop if bzone == "Netherlands" | bzone == "Greece" | bzone == "Hungary" | bzone == "Portugal" | bzone == "Spain" 
 drop if bzone == "Switzerland" // Drop Switzerland since it is not EU
@@ -13,7 +13,15 @@ drop if bzone == "Switzerland" // Drop Switzerland since it is not EU
 drop if bzone == "IT_NORTH" | bzone == "IT_CNOR" | bzone == "IT_CSUD" | bzone == "IT_SUD" | bzone == "IT_CALA" | bzone == "IT_SICI" | bzone == "IT_SARD" | bzone == "IT_SACOAC" | bzone == "IT_SACODC"
 // drop if bzone == "Ireland"
 
-drop if bzone == "Cyprus" // Drop Cyprus since it misses data from 2023 and 2024 and elsewhere AND PRICES
+drop if bzone == "Cyprus" // Drop Cyprus since it misses data from 2023 and 2024 and elsewhere AND PRICES */
+
+
+drop if bzone == "Germany" | bzone == "Portugal" | bzone == "Romania" | bzone == "Hungary" | bzone == "Bulgaria" | bzone == "Czechia" | bzone == "Ireland" | bzone == "Netherlands" | bzone == "Greece" | bzone == "Estonia" | bzone == "Poland" | bzone == "Cyprus"
+
+//drop if bzone == "Germany" || bzone == "Bulgaria" || bzone == "Ireland" || bzone == "Czechia" || bzone == "Netherlands" || bzone == "Greece" || bzone == "Estonia" || bzone == "Poland" || bzone == "Cyprus"
+drop if bzone == "IT_NORTH" | bzone == "IT_CNOR" | bzone == "IT_CSUD" | bzone == "IT_SUD" | bzone == "IT_CALA" | bzone == "IT_SICI" | bzone == "IT_SARD" | bzone == "IT_SACOAC" | bzone == "IT_SACODC"
+
+drop if bzone == "Croatia" // Missing data in 2017-2018
 
 
 cap mkdir "outputs/panel/solar_diff_and_diff/synthetic"
@@ -198,7 +206,7 @@ program define synth_did
         /*temperature(1(1)`ref_pos')*/ sun(1(1)`ref_pos') /*precipitation(1(1)`ref_pos')*/ ///
         high_solar_pre, ///
         trunit(`lv_id') trperiod(`trperiod_pos') ///
-        customV(0.10 0.10 0.30 0.25 0.15 0.10) ///
+        customV(0.25 0.10 0.25 0.15 0.15 0.10) ///
         /*nested allopt*/
 
     // ---------------------------------------------------------------
