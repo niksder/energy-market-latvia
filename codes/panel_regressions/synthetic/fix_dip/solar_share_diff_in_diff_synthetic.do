@@ -199,7 +199,7 @@ program define synth_did
             write replace
         file write `fh_pred' "\begin{table}[htbp]" _n
         file write `fh_pred' "\centering" _n
-        file write `fh_pred' "\caption{Bidding zone characteristics: pre-treatment means [`tag']}" _n
+        file write `fh_pred' "\caption{Bidding zone characteristics: pre-treatment means (`hy_lbl' `yr')}" _n
         file write `fh_pred' "\label{tab:synth_predictors_`tag'}" _n
         file write `fh_pred' "\begin{tabular}{lcccccc}" _n
         file write `fh_pred' "\hline\hline" _n
@@ -269,7 +269,7 @@ program define synth_did
             write replace
         file write `fh_wt' "\begin{table}[htbp]" _n
         file write `fh_wt' "\centering" _n
-        file write `fh_wt' "\caption{Synthetic Latvia donor weights [`tag']}" _n
+        file write `fh_wt' "\caption{Synthetic Latvia donor weights (`hy_lbl' `yr')}" _n
         file write `fh_wt' "\label{tab:synth_weights_`tag'}" _n
         file write `fh_wt' "\begin{tabular}{lc}" _n
         file write `fh_wt' "\hline\hline" _n
@@ -360,7 +360,7 @@ program define synth_did
                 position(11) ring(0) cols(1)) ///
             xtitle("Half-year period") ///
             ytitle("Solar share (half-year mean)") ///
-            title("Latvia vs. synthetic: solar share [`tag']") ///
+            title("Latvia vs. synthetic: solar share (`hy_lbl' `yr')") ///
             subtitle("Red line = treatment start (`hy_lbl' `yr')") ///
             note("Synthetic control (Abadie et al. 2010).", size(vsmall)) ///
             scheme(s2color)
@@ -384,7 +384,7 @@ program define synth_did
                 position(1) ring(0) cols(1)) ///
             xtitle("Half-year period") ///
             ytitle("Gas share (half-year mean)") ///
-            title("Latvia vs. synthetic: gas share [`tag']") ///
+            title("Latvia vs. synthetic: gas share (`hy_lbl' `yr')") ///
             subtitle("Red line = treatment start (`hy_lbl' `yr')") ///
             note("Synthetic control (Abadie et al. 2010).", size(vsmall)) ///
             scheme(s2color)
@@ -408,7 +408,7 @@ program define synth_did
             write replace
         file write `fh_bal' "\begin{table}[htbp]" _n
         file write `fh_bal' "\centering" _n
-        file write `fh_bal' "\caption{Predictor balance: Latvia vs.\ Synthetic Latvia (pre-treatment) [`tag']}" _n
+        file write `fh_bal' "\caption{Predictor balance: Latvia vs.\ Synthetic Latvia (pre-treatment) (`hy_lbl' `yr')}" _n
         file write `fh_bal' "\label{tab:synth_balance_`tag'}" _n
         file write `fh_bal' "\begin{tabular}{lcc}" _n
         file write `fh_bal' "\hline\hline" _n
@@ -567,7 +567,7 @@ program define synth_did
             legend(off) ///
             xtitle("Half-year period") ///
             ytitle("Solar share gap: Latvia – Synthetic Latvia (pp)") ///
-            title("Event study: solar share [`tag']") ///
+            title("Event study: solar share (`hy_lbl' `yr')") ///
             subtitle("Red line = treatment start (`hy_lbl' `yr'); ref = `ref_lbl' `ref_yr'") ///
             note("Synthetic control DiD (Abadie et al. 2010). FE: unit + month + day-of-week." ///
                  "SE clustered at month-year level.", size(vsmall)) ///
@@ -601,7 +601,7 @@ program define synth_did
             write replace
         file write `fh_es' "\begin{table}[htbp]" _n
         file write `fh_es' "\centering" _n
-        file write `fh_es' "\caption{Event study: solar share gap by half-year (Latvia vs.\ Synthetic Latvia) [`tag']}" _n
+        file write `fh_es' "\caption{Event study: solar share gap by half-year (Latvia vs.\ Synthetic Latvia) (`hy_lbl' `yr')}" _n
         file write `fh_es' "\label{tab:event_study_`tag'}" _n
         file write `fh_es' "\begin{tabular}{lc}" _n
         file write `fh_es' "\hline\hline" _n

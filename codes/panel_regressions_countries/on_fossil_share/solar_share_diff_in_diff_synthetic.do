@@ -287,7 +287,7 @@ program define synth_did
                 position(11) ring(0) cols(1)) ///
             xtitle("Half-year period") ///
             ytitle("Solar share (half-year mean)") ///
-            title("Latvia vs. synthetic: solar share [`tag']") ///
+            title("Latvia vs. synthetic: solar share (`hy_lbl' `yr')") ///
             subtitle("Red line = treatment start (`hy_lbl' `yr')") ///
             note("Synthetic control (Abadie et al. 2010).", size(vsmall)) ///
             scheme(s2color)
@@ -311,7 +311,7 @@ program define synth_did
                 position(1) ring(0) cols(1)) ///
             xtitle("Half-year period") ///
             ytitle("Fossil share (half-year mean)") ///
-            title("Latvia vs. synthetic: fossil share [`tag']") ///
+            title("Latvia vs. synthetic: fossil share (`hy_lbl' `yr')") ///
             subtitle("Red line = treatment start (`hy_lbl' `yr')") ///
             note("Synthetic control (Abadie et al. 2010).", size(vsmall)) ///
             scheme(s2color)
@@ -450,7 +450,7 @@ program define synth_did
             legend(off) ///
             xtitle("Half-year period") ///
             ytitle("Solar share gap: Latvia – Synthetic Latvia (pp)") ///
-            title("Event study: solar share [`tag']") ///
+            title("Event study: solar share (`hy_lbl' `yr')") ///
             subtitle("Red line = treatment start (`hy_lbl' `yr'); ref = `ref_lbl' `ref_yr'") ///
             note("Synthetic control DiD (Abadie et al. 2010). FE: unit + month + day-of-week." ///
                  "95%/90% CIs; SE clustered at month-year level.", size(vsmall)) ///
