@@ -191,6 +191,41 @@ program define synth_did
             "outputs/panel/solar_diff_and_diff/synthetic/synth_predictors_`tag'.csv", ///
             replace
         di as text "Predictor table saved: outputs/panel/solar_diff_and_diff/synthetic/synth_predictors_`tag'.csv" */
+
+        // LaTeX table: bidding zone characteristics
+        tempname fh_pred
+        file open `fh_pred' using ///
+            "outputs/panel/solar_diff_and_diff/synthetic/synth_predictors_`tag'.tex", ///
+            write replace
+        file write `fh_pred' "\begin{table}[htbp]" _n
+        file write `fh_pred' "\centering" _n
+        file write `fh_pred' "\caption{Bidding zone characteristics: pre-treatment means [`tag']}" _n
+        file write `fh_pred' "\label{tab:synth_predictors_`tag'}" _n
+        file write `fh_pred' "\begin{tabular}{lcccccc}" _n
+        file write `fh_pred' "\hline\hline" _n
+        file write `fh_pred' "Bidding zone & Treated & Solar share (\%) & Energy price & Pop.\ density & GDP PPS & Sun \\" _n
+        file write `fh_pred' "\hline" _n
+        local N_chars = _N
+        forvalues ii = 1/`N_chars' {
+            local bname  = bzone[`ii']
+            local is_tr  = cond(is_treated[`ii'] == 1, "Yes", "No")
+            local sol_s  = strtrim(string(solar_share[`ii'] * 100, "%6.3f"))
+            local ep_s   = strtrim(string(energy_price[`ii'], "%6.1f"))
+            local pd_s   = strtrim(string(population_density[`ii'], "%6.1f"))
+            local gd_s   = strtrim(string(gdp_pps[`ii'], "%6.1f"))
+            local su_s   = strtrim(string(sun[`ii'], "%6.1f"))
+            file write `fh_pred' "`bname' & `is_tr' & `sol_s' & `ep_s' & `pd_s' & `gd_s' & `su_s' \\" _n
+        }
+        file write `fh_pred' "\hline\hline" _n
+        file write `fh_pred' "\multicolumn{7}{p{0.95\linewidth}}{\footnotesize" _n
+        file write `fh_pred' " \textit{Note}: Pre-treatment means (hy\_seq\_pos 1--`pre_end')." _n
+        file write `fh_pred' " Solar share converted to \%. Treated = Yes for Latvia." _n
+        file write `fh_pred' " Energy price in EUR/MWh; pop.\ density in persons/km\textsuperscript{2}." _n
+        file write `fh_pred' " Sun = mean solar radiation.} \\" _n
+        file write `fh_pred' "\end{tabular}" _n
+        file write `fh_pred' "\end{table}" _n
+        file close `fh_pred'
+        di as text "Bidding zone characteristics table saved: outputs/panel/solar_diff_and_diff/synthetic/synth_predictors_`tag'.tex"
     restore
 
     // ---------------------------------------------------------------
@@ -228,11 +263,33 @@ program define synth_did
     di as text "  ---------------------- --------"
     preserve
         use "$g_synth_bzones", clear
+        tempname fh_wt
+        file open `fh_wt' using ///
+            "outputs/panel/solar_diff_and_diff/synthetic/synth_weights_`tag'.tex", ///
+            write replace
+        file write `fh_wt' "\begin{table}[htbp]" _n
+        file write `fh_wt' "\centering" _n
+        file write `fh_wt' "\caption{Synthetic Latvia donor weights [`tag']}" _n
+        file write `fh_wt' "\label{tab:synth_weights_`tag'}" _n
+        file write `fh_wt' "\begin{tabular}{lc}" _n
+        file write `fh_wt' "\hline\hline" _n
+        file write `fh_wt' "Bidding zone & Weight \\" _n
+        file write `fh_wt' "\hline" _n
         forvalues j = 1/`n_sc_donors' {
             quietly levelsof bzone if bzone_id == scalar(_sc_id_`j'), local(_bname)
             local _bname_str : word 1 of `_bname'
             di as text "  " %-22s "`_bname_str'" %8.4f scalar(_sc_wt_`j')
+            local wt_s = strtrim(string(scalar(_sc_wt_`j'), "%6.4f"))
+            file write `fh_wt' "`_bname_str' & `wt_s' \\" _n
         }
+        file write `fh_wt' "\hline\hline" _n
+        file write `fh_wt' "\multicolumn{2}{p{0.5\linewidth}}{\footnotesize" _n
+        file write `fh_wt' " \textit{Note}: Donor weights from synthetic control (Abadie et al.\ 2010)." _n
+        file write `fh_wt' " Weights sum to one; bidding zones with zero weight are omitted by synth.} \\" _n
+        file write `fh_wt' "\end{tabular}" _n
+        file write `fh_wt' "\end{table}" _n
+        file close `fh_wt'
+        di as text "Donor weights table saved: outputs/panel/solar_diff_and_diff/synthetic/synth_weights_`tag'.tex"
     restore
 
     // ---------------------------------------------------------------
@@ -333,6 +390,53 @@ program define synth_did
             scheme(s2color)
         graph export "outputs/panel/solar_diff_and_diff/synthetic/synth_path_gas_share_`tag'_fix_dip.png", ///
             replace width(1400) height(900)
+    restore
+
+    // ---------------------------------------------------------------
+    // Predictor balance: Latvia vs. Synthetic Latvia (pre-treatment)
+    // ---------------------------------------------------------------
+    preserve
+        keep if !post
+        collapse (mean) solar_share synth_solar_share ///
+                        gas_share synth_gas_share ///
+                        sun synth_sun ///
+                        temperature synth_temperature ///
+                        precipitation synth_precipitation
+        tempname fh_bal
+        file open `fh_bal' using ///
+            "outputs/panel/solar_diff_and_diff/synthetic/synth_balance_`tag'.tex", ///
+            write replace
+        file write `fh_bal' "\begin{table}[htbp]" _n
+        file write `fh_bal' "\centering" _n
+        file write `fh_bal' "\caption{Predictor balance: Latvia vs.\ Synthetic Latvia (pre-treatment) [`tag']}" _n
+        file write `fh_bal' "\label{tab:synth_balance_`tag'}" _n
+        file write `fh_bal' "\begin{tabular}{lcc}" _n
+        file write `fh_bal' "\hline\hline" _n
+        file write `fh_bal' "Variable & Latvia & Synthetic Latvia \\" _n
+        file write `fh_bal' "\hline" _n
+        local sol_lv = strtrim(string(solar_share[1]       * 100, "%6.3f"))
+        local sol_sc = strtrim(string(synth_solar_share[1] * 100, "%6.3f"))
+        file write `fh_bal' "Solar share (\%) & `sol_lv' & `sol_sc' \\" _n
+        local gas_lv = strtrim(string(gas_share[1]         * 100, "%5.1f"))
+        local gas_sc = strtrim(string(synth_gas_share[1]   * 100, "%5.1f"))
+        file write `fh_bal' "Gas share (\%) & `gas_lv' & `gas_sc' \\" _n
+        local sun_lv = strtrim(string(sun[1],         "%6.2f"))
+        local sun_sc = strtrim(string(synth_sun[1],   "%6.2f"))
+        file write `fh_bal' "Sun radiation & `sun_lv' & `sun_sc' \\" _n
+        local tmp_lv = strtrim(string(temperature[1]       - 273.15, "%5.2f"))
+        local tmp_sc = strtrim(string(synth_temperature[1] - 273.15, "%5.2f"))
+        file write `fh_bal' "Temperature (\ensuremath{^\circ}C) & `tmp_lv' & `tmp_sc' \\" _n
+        local prc_lv = strtrim(string(precipitation[1],       "%6.2f"))
+        local prc_sc = strtrim(string(synth_precipitation[1], "%6.2f"))
+        file write `fh_bal' "Precipitation (mm/day) & `prc_lv' & `prc_sc' \\" _n
+        file write `fh_bal' "\hline\hline" _n
+        file write `fh_bal' "\multicolumn{3}{p{0.55\linewidth}}{\footnotesize" _n
+        file write `fh_bal' " \textit{Note}: Daily pre-treatment means. Synthetic Latvia is the" _n
+        file write `fh_bal' " donor-weighted average. Temperature converted from Kelvin.} \\" _n
+        file write `fh_bal' "\end{tabular}" _n
+        file write `fh_bal' "\end{table}" _n
+        file close `fh_bal'
+        di as text "Predictor balance table saved: outputs/panel/solar_diff_and_diff/synthetic/synth_balance_`tag'.tex"
     restore
 
     // ---------------------------------------------------------------
@@ -450,8 +554,6 @@ program define synth_did
         sort period
 
         twoway ///
-            (rcap lb95 ub95 period, lcolor(navy%30)) ///
-            (rcap lb90 ub90 period, lcolor(navy%55)) ///
             (connected coef period, ///
                 mcolor(navy) lcolor(navy) msymbol(circle) lpattern(solid)), ///
             yline(0, lpattern(dash) lcolor(gray)) ///
@@ -468,11 +570,92 @@ program define synth_did
             title("Event study: solar share [`tag']") ///
             subtitle("Red line = treatment start (`hy_lbl' `yr'); ref = `ref_lbl' `ref_yr'") ///
             note("Synthetic control DiD (Abadie et al. 2010). FE: unit + month + day-of-week." ///
-                 "95%/90% CIs; SE clustered at month-year level.", size(vsmall)) ///
+                 "SE clustered at month-year level.", size(vsmall)) ///
             scheme(s2color)
 
         graph export "outputs/panel/solar_diff_and_diff/synthetic/event_study_solar_share_`tag'_fix_dip.png", ///
             replace width(1400) height(900)
+    restore
+
+    // ---------------------------------------------------------------
+    // LaTeX table: event study coefficients (one row per half-year)
+    // ---------------------------------------------------------------
+    preserve
+        clear
+        set obs `nper'
+        gen period = .
+        gen coef   = .
+        gen lb95   = .
+        gen ub95   = .
+        forvalues i = 1/`nper' {
+            replace period = _es_period_`i' in `i'
+            replace coef   = _es_coef_`i'   in `i'
+            replace lb95   = _es_lb_`i'     in `i'
+            replace ub95   = _es_ub_`i'     in `i'
+        }
+        sort period
+        local d = char(36)
+        tempname fh_es
+        file open `fh_es' using ///
+            "outputs/panel/solar_diff_and_diff/synthetic/event_study_solar_coefs_`tag'.tex", ///
+            write replace
+        file write `fh_es' "\begin{table}[htbp]" _n
+        file write `fh_es' "\centering" _n
+        file write `fh_es' "\caption{Event study: solar share gap by half-year (Latvia vs.\ Synthetic Latvia) [`tag']}" _n
+        file write `fh_es' "\label{tab:event_study_`tag'}" _n
+        file write `fh_es' "\begin{tabular}{lc}" _n
+        file write `fh_es' "\hline\hline" _n
+        file write `fh_es' "Period & Solar share gap (pp) \\" _n
+        file write `fh_es' " & {\footnotesize (cluster-robust SE)} \\" _n
+        file write `fh_es' "\hline" _n
+        local N_rows = _N
+        forvalues i = 1/`N_rows' {
+            local per_val = int(period[`i'])
+            local k_val   = `per_val' + 8
+            if mod(`k_val', 2) == 1 {
+                local per_sem "H1"
+                local per_yr  = 2017 + (`k_val' - 1) / 2
+            }
+            else {
+                local per_sem "H2"
+                local per_yr  = 2016 + `k_val' / 2
+            }
+            local per_label "`per_sem' `per_yr'"
+            if `k_val' == `ref_pos' {
+                file write `fh_es' "`per_label' & 0 \\" _n
+                file write `fh_es' "       & {\footnotesize \textit{(reference)}} \\" _n
+            }
+            else {
+                local c_val  = coef[`i']
+                local l95    = lb95[`i']
+                local u95    = ub95[`i']
+                local se_val = (`u95' - `l95') / (2 * 1.959964)
+                local t_val  = abs(`c_val') / `se_val'
+                if      `t_val' > 2.576 local stars "`d'^{***}`d'"
+                else if `t_val' > 1.960 local stars "`d'^{**}`d'"
+                else if `t_val' > 1.645 local stars "`d'^{*}`d'"
+                else                    local stars ""
+                local coef_str = strtrim(string(`c_val',  "%10.4f"))
+                local se_str   = strtrim(string(`se_val', "%10.4f"))
+                file write `fh_es' "`per_label' & `coef_str'`stars' \\" _n
+                file write `fh_es' "       & (`se_str') \\" _n
+            }
+            if `k_val' == `pre_end' {
+                file write `fh_es' "\hline" _n
+            }
+        }
+        file write `fh_es' "\hline\hline" _n
+        file write `fh_es' "\multicolumn{2}{p{0.6\linewidth}}{\footnotesize" _n
+        file write `fh_es' " \textit{Note}: Synthetic control DiD (Abadie et al.\ 2010)." _n
+        file write `fh_es' " Dependent variable: solar share (pp), Latvia minus Synthetic Latvia." _n
+        file write `fh_es' " Reference period: `ref_lbl' `ref_yr'." _n
+        file write `fh_es' " SE derived from 95\% CI; clustered at month-year level." _n
+        file write `fh_es' " `d'^{***}`d' `d'p<0.01`d', `d'^{**}`d' `d'p<0.05`d', `d'^{*}`d' `d'p<0.10`d'" _n
+        file write `fh_es' " (normal approximation).} \\" _n
+        file write `fh_es' "\end{tabular}" _n
+        file write `fh_es' "\end{table}" _n
+        file close `fh_es'
+        di as text "Event study table saved: outputs/panel/solar_diff_and_diff/synthetic/event_study_solar_coefs_`tag'.tex"
     restore
 
     di as text "Done [`tag']. Outputs in outputs/panel/solar_diff_and_diff/synthetic/"
