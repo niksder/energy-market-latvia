@@ -404,6 +404,50 @@ program define synth_did
             scheme(s2color)
         graph export "outputs/panel/solar_diff_and_diff/synthetic/synth_path_gas_share_`tag'_fix_dip.png", ///
             replace width(1400) height(900)
+
+        // Real vs synthetic paths table (LaTeX)
+        sort period
+        gen str8 _period_lbl = ""
+        replace _period_lbl = "H1 2017" if period == -7
+        replace _period_lbl = "H2 2017" if period == -6
+        replace _period_lbl = "H1 2018" if period == -5
+        replace _period_lbl = "H2 2018" if period == -4
+        replace _period_lbl = "H1 2019" if period == -3
+        replace _period_lbl = "H2 2019" if period == -2
+        replace _period_lbl = "H1 2020" if period == -1
+        replace _period_lbl = "H2 2020" if period == 0
+        replace _period_lbl = "H1 2021" if period == 1
+        replace _period_lbl = "H2 2021" if period == 2
+        replace _period_lbl = "H1 2022" if period == 3
+        replace _period_lbl = "H2 2022" if period == 4
+        replace _period_lbl = "H1 2023" if period == 5
+        replace _period_lbl = "H2 2023" if period == 6
+        replace _period_lbl = "H1 2024" if period == 7
+        replace _period_lbl = "H2 2024" if period == 8
+        replace _period_lbl = "H1 2025" if period == 9
+        replace _period_lbl = "H2 2025" if period == 10
+        tempname fh_path
+        file open `fh_path' using "outputs/panel/solar_diff_and_diff/synthetic/synth_path_solar_share_`tag'_fix_dip.tex", write replace
+        file write `fh_path' "\begin{table}[htbp]" _n
+        file write `fh_path' "\centering" _n
+        file write `fh_path' "\caption{Real vs.\ Synthetic Latvia: solar share (`hy_lbl' `yr')}" _n
+        file write `fh_path' "\label{tab:synth_path_solar_share_`tag'_fix_dip}" _n
+        file write `fh_path' "\begin{tabular}{lcc}" _n
+        file write `fh_path' "\hline\hline" _n
+        file write `fh_path' "Period & Latvia (actual) & Synthetic Latvia \\" _n
+        file write `fh_path' "\hline" _n
+        local _npath = _N
+        forvalues _i = 1/`_npath' {
+            local _plbl = _period_lbl[`_i']
+            local _lv   = strtrim(string(lv_solar[`_i'], "%6.4f"))
+            local _sc   = strtrim(string(sc_solar[`_i'], "%6.4f"))
+            file write `fh_path' "`_plbl' & `_lv' & `_sc' \\" _n
+        }
+        file write `fh_path' "\hline\hline" _n
+        file write `fh_path' "\end{tabular}" _n
+        file write `fh_path' "\end{table}" _n
+        file close `fh_path'
+        di as text "Real vs synthetic paths table saved: outputs/panel/solar_diff_and_diff/synthetic/synth_path_solar_share_`tag'_fix_dip.tex"
     restore
 
     // ---------------------------------------------------------------

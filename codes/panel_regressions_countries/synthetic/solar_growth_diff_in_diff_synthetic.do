@@ -306,6 +306,50 @@ program define synth_did
             scheme(s2color)
         graph export "outputs/panel_countries/solar_diff_and_diff/synthetic/synth_path_gas_share_`tag'.png", ///
             replace width(1400) height(900)
+
+        // Real vs synthetic paths table (LaTeX)
+        sort period
+        gen str8 _period_lbl = ""
+        replace _period_lbl = "H1 2017" if period == -7
+        replace _period_lbl = "H2 2017" if period == -6
+        replace _period_lbl = "H1 2018" if period == -5
+        replace _period_lbl = "H2 2018" if period == -4
+        replace _period_lbl = "H1 2019" if period == -3
+        replace _period_lbl = "H2 2019" if period == -2
+        replace _period_lbl = "H1 2020" if period == -1
+        replace _period_lbl = "H2 2020" if period == 0
+        replace _period_lbl = "H1 2021" if period == 1
+        replace _period_lbl = "H2 2021" if period == 2
+        replace _period_lbl = "H1 2022" if period == 3
+        replace _period_lbl = "H2 2022" if period == 4
+        replace _period_lbl = "H1 2023" if period == 5
+        replace _period_lbl = "H2 2023" if period == 6
+        replace _period_lbl = "H1 2024" if period == 7
+        replace _period_lbl = "H2 2024" if period == 8
+        replace _period_lbl = "H1 2025" if period == 9
+        replace _period_lbl = "H2 2025" if period == 10
+        tempname fh_path
+        file open `fh_path' using "outputs/panel_countries/solar_diff_and_diff/synthetic/synth_path_solar_prod_`tag'.tex", write replace
+        file write `fh_path' "\begin{table}[htbp]" _n
+        file write `fh_path' "\centering" _n
+        file write `fh_path' "\caption{Real vs.\ Synthetic Latvia: solar production log-diff (`hy_lbl' `yr')}" _n
+        file write `fh_path' "\label{tab:synth_path_solar_prod_`tag'}" _n
+        file write `fh_path' "\begin{tabular}{lcc}" _n
+        file write `fh_path' "\hline\hline" _n
+        file write `fh_path' "Period & Latvia (actual) & Synthetic Latvia \\" _n
+        file write `fh_path' "\hline" _n
+        local _npath = _N
+        forvalues _i = 1/`_npath' {
+            local _plbl = _period_lbl[`_i']
+            local _lv   = strtrim(string(lv_solar[`_i'], "%8.6f"))
+            local _sc   = strtrim(string(sc_solar[`_i'], "%8.6f"))
+            file write `fh_path' "`_plbl' & `_lv' & `_sc' \\" _n
+        }
+        file write `fh_path' "\hline\hline" _n
+        file write `fh_path' "\end{tabular}" _n
+        file write `fh_path' "\end{table}" _n
+        file close `fh_path'
+        di as text "Real vs synthetic paths table saved: outputs/panel_countries/solar_diff_and_diff/synthetic/synth_path_solar_prod_`tag'.tex"
     restore
 
     // ---------------------------------------------------------------
@@ -418,8 +462,6 @@ program define synth_did
         sort period
 
         twoway ///
-            (rcap lb95 ub95 period, lcolor(navy%30)) ///
-            (rcap lb90 ub90 period, lcolor(navy%55)) ///
             (connected coef period, ///
                 mcolor(navy) lcolor(navy) msymbol(circle) lpattern(solid)), ///
             yline(0, lpattern(dash) lcolor(gray)) ///
@@ -435,8 +477,7 @@ program define synth_did
             ytitle("Log-diff solar production gap: Latvia – Synthetic Latvia") ///
             title("Event study: solar production log-diff (`hy_lbl' `yr')") ///
             subtitle("Red line = treatment start (`hy_lbl' `yr'); ref = `ref_lbl' `ref_yr'") ///
-            note("Synthetic control DiD (Abadie et al. 2010). FE: unit + month + day-of-week." ///
-                 "95%/90% CIs; SE clustered at month-year level.", size(vsmall)) ///
+            note("Synthetic control DiD (Abadie et al. 2010). FE: unit + month + day-of-week.", size(vsmall)) ///
             scheme(s2color)
 
         graph export "outputs/panel_countries/solar_diff_and_diff/synthetic/event_study_solar_prod_`tag'.png", ///
@@ -477,8 +518,6 @@ program define synth_did
         gen cum_ub90 = cumcoef + invnormal(0.95)  * cum_se
 
         twoway ///
-            (rarea cum_lb95 cum_ub95 period, color(navy%20) fintensity(50)) ///
-            (rarea cum_lb90 cum_ub90 period, color(navy%35) fintensity(50)) ///
             (connected cumcoef period, ///
                 mcolor(navy) lcolor(navy) msymbol(circle) lpattern(solid) msize(small)), ///
             yline(0, lpattern(dash) lcolor(gray)) ///
@@ -494,8 +533,7 @@ program define synth_did
             ytitle("Cumulative log-diff solar production gap") ///
             title("Cumulative effect: solar production log-diff (`hy_lbl' `yr')") ///
             subtitle("Red line = treatment start (`hy_lbl' `yr'); ref = `ref_lbl' `ref_yr'") ///
-            note("Cumulative sum of log-diff solar production event-study gaps from treatment start." ///
-                 "95%/90% CIs assume independence across periods. SE clustered at month-year.", size(vsmall)) ///
+            note("Cumulative sum of log-diff solar production event-study gaps from treatment start.", size(vsmall)) ///
             scheme(s2color)
 
         graph export "outputs/panel_countries/solar_diff_and_diff/synthetic/cumulative_solar_prod_`tag'.png", ///
