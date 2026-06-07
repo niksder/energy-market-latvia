@@ -426,7 +426,7 @@ program define synth_did
     }
 
     regress solar_share `inter_vars' treated ///
-        i.day_of_week ib`ref_pos'.hy_seq_pos, vce(cluster month_year)
+        i.month ib`ref_pos'.hy_seq_pos, vce(cluster month_year)
     eststo event_solar_`tag'
 
     // ---------------------------------------------------------------
@@ -491,7 +491,7 @@ program define synth_did
             ytitle("Solar share gap: Latvia – Synthetic Latvia (pp)") ///
             title("Event study: solar share (`hy_lbl' `yr')") ///
             subtitle("Red line = treatment start (`hy_lbl' `yr'); ref = `ref_lbl' `ref_yr'") ///
-            note("Synthetic control DiD (Abadie et al. 2010). FE: unit + month + day-of-week.", size(vsmall)) ///
+            note("Synthetic control DiD (Abadie et al. 2010). FE: unit + month.", size(vsmall)) ///
             scheme(s2color)
 
         graph export "outputs/panel/solar_diff_and_diff/russia_dependence/event_study_solar_share_`tag'.png", ///

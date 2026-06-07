@@ -527,13 +527,13 @@ program define synth_did
     // Main DiD regressions
     // ---------------------------------------------------------------
     regress solar_share treated_x_post treated ///
-        i.day_of_week i.month, vce(cluster month_year)
+        i.month, vce(cluster month_year)
     eststo did_levels_`tag'
     di "DiD coef (levels, `tag'): " %9.3f _b[treated_x_post] ///
        "  SE: " %9.3f _se[treated_x_post]
 
     regress ln_solar_share treated_x_post treated ///
-        i.day_of_week i.month, vce(cluster month_year)
+        i.month, vce(cluster month_year)
     eststo did_log_`tag'
     di "DiD coef (log,    `tag'): " %9.4f _b[treated_x_post] ///
        "  SE: " %9.4f _se[treated_x_post]
@@ -556,7 +556,7 @@ program define synth_did
     }
 
     regress solar_share `inter_vars' treated ///
-        i.day_of_week ib`ref_pos'.hy_seq_pos, vce(cluster month_year)
+        i.month ib`ref_pos'.hy_seq_pos, vce(cluster month_year)
     eststo event_solar_`tag'
 
     // ---------------------------------------------------------------
@@ -621,8 +621,7 @@ program define synth_did
             ytitle("Solar share gap: Latvia – Synthetic Latvia (pp)") ///
             title("Event study: solar share (`hy_lbl' `yr')") ///
             subtitle("Red line = treatment start (`hy_lbl' `yr'); ref = `ref_lbl' `ref_yr'") ///
-            note("Synthetic control DiD (Abadie et al. 2010). FE: unit + month + day-of-week." ///
-                 "SE clustered at month-year level.", size(vsmall)) ///
+            note("Synthetic control DiD (Abadie et al. 2010). FE: unit + month. SE clustered at month-year level.", size(vsmall)) ///
             scheme(s2color)
 
         graph export "outputs/panel/solar_diff_and_diff/synthetic/event_study_solar_share_`tag'_fix_dip.png", ///
