@@ -297,31 +297,44 @@ program define synth_did
     // ---------------------------------------------------------------
     use `dp_run', clear
 
+    // Compute high_solar_pre from daily panel (same definition as in Step 1)
+    bysort bzone_id: egen _mean_pre_solar = mean(cond(hy_seq_pos <= `pre_end', solar_share, .))
+    gen high_solar_pre = (_mean_pre_solar > 0.005)
+    drop _mean_pre_solar
+
     gen _synth_wt = 0
     forvalues j = 1/`n_sc_donors' {
         replace _synth_wt = scalar(_sc_wt_`j') if bzone_id == scalar(_sc_id_`j')
     }
 
-    gen _wt_solar         = _synth_wt * solar_share
-    gen _wt_ln_solar      = _synth_wt * ln_solar_share
-    gen _wt_gas           = _synth_wt * gas_share
-    gen _wt_temperature   = _synth_wt * temperature
-    gen _wt_sun           = _synth_wt * sun
-    gen _wt_precipitation = _synth_wt * precipitation
-    gen _wt_ln_sun        = _synth_wt * ln_sun
-    gen _wt_ln_precip     = _synth_wt * ln_precipitation
+    gen _wt_solar          = _synth_wt * solar_share
+    gen _wt_ln_solar       = _synth_wt * ln_solar_share
+    gen _wt_gas            = _synth_wt * gas_share
+    gen _wt_energy_price   = _synth_wt * energy_price
+    gen _wt_pop_density    = _synth_wt * population_density
+    gen _wt_gdp_pps        = _synth_wt * gdp_pps
+    gen _wt_temperature    = _synth_wt * temperature
+    gen _wt_sun            = _synth_wt * sun
+    gen _wt_precipitation  = _synth_wt * precipitation
+    gen _wt_ln_sun         = _synth_wt * ln_sun
+    gen _wt_ln_precip      = _synth_wt * ln_precipitation
+    gen _wt_high_solar_pre = _synth_wt * high_solar_pre
 
     preserve
         drop if bzone_id == `lv_id'
         collapse ///
-            (sum)  synth_solar_share      = _wt_solar         ///
-                   synth_ln_solar_share   = _wt_ln_solar       ///
-                   synth_gas_share        = _wt_gas            ///
-                   synth_temperature      = _wt_temperature    ///
-                   synth_sun              = _wt_sun            ///
-                   synth_precipitation    = _wt_precipitation  ///
-                   synth_ln_sun           = _wt_ln_sun         ///
-                   synth_ln_precipitation = _wt_ln_precip      ///
+            (sum)  synth_solar_share      = _wt_solar          ///
+                   synth_ln_solar_share   = _wt_ln_solar        ///
+                   synth_gas_share        = _wt_gas             ///
+                   synth_energy_price     = _wt_energy_price    ///
+                   synth_pop_density      = _wt_pop_density     ///
+                   synth_gdp_pps          = _wt_gdp_pps         ///
+                   synth_temperature      = _wt_temperature     ///
+                   synth_sun              = _wt_sun             ///
+                   synth_precipitation    = _wt_precipitation   ///
+                   synth_ln_sun           = _wt_ln_sun          ///
+                   synth_ln_precipitation = _wt_ln_precip       ///
+                   synth_high_solar_pre   = _wt_high_solar_pre  ///
             (mean) post year month semester hy_seq hy_seq_pos day_of_week, ///
             by(date)
         tempfile _synth_series
@@ -331,8 +344,9 @@ program define synth_did
     keep if bzone_id == `lv_id'
     merge 1:1 date using `_synth_series', nogen
 
-    drop _synth_wt _wt_solar _wt_ln_solar _wt_gas _wt_temperature _wt_sun ///
-         _wt_precipitation _wt_ln_sun _wt_ln_precip
+    drop _synth_wt _wt_solar _wt_ln_solar _wt_gas _wt_energy_price _wt_pop_density ///
+         _wt_gdp_pps _wt_temperature _wt_sun _wt_precipitation _wt_ln_sun _wt_ln_precip ///
+         _wt_high_solar_pre
 
     // ---------------------------------------------------------------
     // Path plots: Latvia (actual) vs. Synthetic Latvia
@@ -398,10 +412,11 @@ program define synth_did
     preserve
         keep if !post
         collapse (mean) solar_share synth_solar_share ///
-                        gas_share synth_gas_share ///
+                        energy_price synth_energy_price ///
+                        population_density synth_pop_density ///
+                        gdp_pps synth_gdp_pps ///
                         sun synth_sun ///
-                        temperature synth_temperature ///
-                        precipitation synth_precipitation
+                        high_solar_pre synth_high_solar_pre
         tempname fh_bal
         file open `fh_bal' using ///
             "outputs/panel/solar_diff_and_diff/synthetic/synth_balance_`tag'.tex", ///
@@ -414,25 +429,28 @@ program define synth_did
         file write `fh_bal' "\hline\hline" _n
         file write `fh_bal' "Variable & Latvia & Synthetic Latvia \\" _n
         file write `fh_bal' "\hline" _n
-        local sol_lv = strtrim(string(solar_share[1]       * 100, "%6.3f"))
-        local sol_sc = strtrim(string(synth_solar_share[1] * 100, "%6.3f"))
+        local sol_lv = strtrim(string(solar_share[1]          * 100, "%6.3f"))
+        local sol_sc = strtrim(string(synth_solar_share[1]    * 100, "%6.3f"))
         file write `fh_bal' "Solar share (\%) & `sol_lv' & `sol_sc' \\" _n
-        local gas_lv = strtrim(string(gas_share[1]         * 100, "%5.1f"))
-        local gas_sc = strtrim(string(synth_gas_share[1]   * 100, "%5.1f"))
-        file write `fh_bal' "Gas share (\%) & `gas_lv' & `gas_sc' \\" _n
-        local sun_lv = strtrim(string(sun[1],         "%6.2f"))
-        local sun_sc = strtrim(string(synth_sun[1],   "%6.2f"))
+        local ep_lv  = strtrim(string(energy_price[1],               "%6.2f"))
+        local ep_sc  = strtrim(string(synth_energy_price[1],         "%6.2f"))
+        file write `fh_bal' "Energy price (EUR/MWh) & `ep_lv' & `ep_sc' \\" _n
+        local pd_lv  = strtrim(string(population_density[1],         "%6.1f"))
+        local pd_sc  = strtrim(string(synth_pop_density[1],          "%6.1f"))
+        file write `fh_bal' "Pop.\ density (persons/km\textsuperscript{2}) & `pd_lv' & `pd_sc' \\" _n
+        local gd_lv  = strtrim(string(gdp_pps[1],                    "%6.1f"))
+        local gd_sc  = strtrim(string(synth_gdp_pps[1],              "%6.1f"))
+        file write `fh_bal' "GDP PPS & `gd_lv' & `gd_sc' \\" _n
+        local sun_lv = strtrim(string(sun[1],                        "%6.2f"))
+        local sun_sc = strtrim(string(synth_sun[1],                  "%6.2f"))
         file write `fh_bal' "Sun radiation & `sun_lv' & `sun_sc' \\" _n
-        local tmp_lv = strtrim(string(temperature[1]       - 273.15, "%5.2f"))
-        local tmp_sc = strtrim(string(synth_temperature[1] - 273.15, "%5.2f"))
-        file write `fh_bal' "Temperature (\ensuremath{^\circ}C) & `tmp_lv' & `tmp_sc' \\" _n
-        local prc_lv = strtrim(string(precipitation[1],       "%6.2f"))
-        local prc_sc = strtrim(string(synth_precipitation[1], "%6.2f"))
-        file write `fh_bal' "Precipitation (mm/day) & `prc_lv' & `prc_sc' \\" _n
+        local hs_lv  = strtrim(string(high_solar_pre[1],             "%2.0f"))
+        local hs_sc  = strtrim(string(synth_high_solar_pre[1],       "%6.4f"))
+        file write `fh_bal' "High pre-solar (>0.5\%) & `hs_lv' & `hs_sc' \\" _n
         file write `fh_bal' "\hline\hline" _n
         file write `fh_bal' "\multicolumn{3}{p{0.55\linewidth}}{\footnotesize" _n
         file write `fh_bal' " \textit{Note}: Daily pre-treatment means. Synthetic Latvia is the" _n
-        file write `fh_bal' " donor-weighted average. Temperature converted from Kelvin.} \\" _n
+        file write `fh_bal' " donor-weighted average.} \\" _n
         file write `fh_bal' "\end{tabular}" _n
         file write `fh_bal' "\end{table}" _n
         file close `fh_bal'
@@ -458,7 +476,8 @@ program define synth_did
     replace ln_sun           = synth_ln_sun           if treated == 0
     replace ln_precipitation = synth_ln_precipitation if treated == 0
 
-    drop synth_solar_share synth_ln_solar_share synth_gas_share synth_temperature ///
+    drop synth_solar_share synth_ln_solar_share synth_gas_share synth_energy_price ///
+         synth_pop_density synth_gdp_pps synth_high_solar_pre synth_temperature ///
          synth_sun synth_precipitation synth_ln_sun synth_ln_precipitation
 
     di as text ""
