@@ -28,6 +28,7 @@ MERGED_PANEL_DATA_PATH = os.path.join(PANEL_DATA_DIR, 'merged_panel_data.csv')
 def _rolling_shares(group):
     group = group.set_index('time').sort_index()
     rolling_total = group['total_generation'].rolling('365D', min_periods=1).sum()
+    group['total_generation_yearly'] = rolling_total
     total_safe = rolling_total.replace(0, float('nan'))
     prod_cols = [c for c in PRODUCTION_COLS if c in group.columns]
     for col in prod_cols:
