@@ -11,6 +11,8 @@ reg d_ln_gas_price ///
 
 predict gas_resid, resid
 
+/*
+
 // Plot gas_resid over time
 twoway bar gas_resid date, ///
     title("Residuals of Log Difference of Gas Price Over Time") ///
@@ -129,3 +131,5 @@ preserve
     // Save the plot
     graph export "outputs/gas_price_residuals_over_time_monthly.png", replace
 restore
+
+*/

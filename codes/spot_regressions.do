@@ -10,17 +10,17 @@ do "codes/load_data.do"
 
 * Simple regression of effect of gas price on energy price without controls
 
-reg ln_energy_price ln_gas_price
+eststo gas1: reg ln_energy_price ln_gas_price
 
 // scatter ln_energy_price ln_gas_price
 
 * Add controls for time of day, day of week, and month
 
-reg ln_energy_price ln_gas_price i.hour i.day_of_week i.month
+eststo gas2: reg ln_energy_price ln_gas_price i.hour i.day_of_week i.month
 
 * Add controls for weather variables
 
-reg ln_energy_price ln_gas_price ///
+eststo gas3: reg ln_energy_price ln_gas_price ///
     temperature wind ln_sun sun_x_solar_capacity ln_water_storage precipitation precipitation_weekly precipitation_monthly ///
     i.hour i.day_of_week i.month, vce(cluster date)
 
@@ -50,7 +50,6 @@ predict ln_energy_price_hat_war, xb
 gen energy_price_hat_war = exp(ln_energy_price_hat_war)
 
 bysort year month: egen energy_price_hat_war_mean = mean(energy_price_hat_war)
-bysort year month: egen energy_price_mean = mean(energy_price)
 
 twoway (line energy_price_mean date, sort) ///
        (line energy_price_hat_war_mean date, sort), ///
@@ -59,3 +58,18 @@ twoway (line energy_price_mean date, sort) ///
        xtitle("Date") ytitle("Energy Price")
 
 graph export "outputs/actual_vs_estimated_energy_price_war_dummy.png", replace
+
+// =============================================================================
+// EXPORT GAS PRICE REGRESSIONS TO LATEX
+// =============================================================================
+
+esttab gas1 gas2 gas3 ///
+    using "outputs/gas_price_regressions.tex", ///
+    replace booktabs se label ///
+    drop(*.hour *.day_of_week *.month) ///
+    varlabels(ln_gas_price "ln(Gas price)") ///
+    title("Effect of log gas price on log electricity price") ///
+    mtitles("No controls" "Time FE" "Weather + Time FE") ///
+    star(* 0.10 ** 0.05 *** 0.01) ///
+    stats(N r2, fmt(%9.0f %6.4f) labels("Observations" "\$R^2\$")) ///
+    note("SE in parentheses. Column (3) clustered by date. Time FE: hour, day-of-week, month.")
