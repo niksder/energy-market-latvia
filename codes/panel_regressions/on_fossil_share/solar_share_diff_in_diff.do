@@ -20,6 +20,9 @@ drop if bzone == "IT_NORTH" | bzone == "IT_CNOR" | bzone == "IT_CSUD" | bzone ==
 
 drop if bzone == "Croatia" // Missing data in 2017-2018
 
+// drop if bzone == "IT_SACOAC" | bzone == "IT_SACODC" | bzone == "IT_CALA" | bzone == "SE1" | bzone == "SE2" | bzone == "SE3" | bzone == "SE4" | bzone == "Cyprus" | bzone == "Germany" | bzone == "Croatia"
+
+
 // Count bzones dynamically
 quietly levelsof bzone_id, local(_bzone_list)
 local n_bzones : word count `_bzone_list'
