@@ -14,7 +14,8 @@ MERGED_PANEL_DATA_PATH = os.path.join(PANEL_DATA_DIR, 'merged_panel_data.csv')
 plot_df = pd.read_csv(
     MERGED_PANEL_DATA_PATH,
     usecols=['bzone', 'time', 'gas_share', 'solar_share', 'gas_prod_yearly', 'solar_prod_yearly',
-             'brown_coal_share', 'coal_gas_share', 'hard_coal_share', 'oil_share', 'oil_shale_share', 'peat_share'],
+             'brown_coal_share', 'coal_gas_share', 'hard_coal_share', 'oil_share', 'oil_shale_share', 'peat_share',
+             'total_generation_yearly'],
     dtype={'bzone': 'category'},
 )
 plot_df['time'] = pd.to_datetime(plot_df['time'], utc=True, format='mixed')
@@ -89,41 +90,42 @@ ax.grid(axis='y', linestyle='--', alpha=0.5)
 fig.tight_layout()
 _save(fig, 'rolling_solar_share.png')
 
-# --- Rolling gas production (log scale) ---
-fig, ax = plt.subplots(figsize=(13, 6))
-for bzone, group in plot_df.groupby('bzone'):
-    group = group.set_index('time').sort_index()
-    daily = group['gas_prod_yearly'].resample('D').mean()
-    daily = daily[daily > 0]
-    ax.plot(daily.index, daily.values, linewidth=2.5 if bzone == 'Latvia' else 1.2, label=bzone,
-            color=ZONE_COLORS.get(bzone))
-ax.set_yscale('log')
-ax.set_title('Rolling 365-day gas production (log scale)')
-ax.set_xlabel('Date')
-ax.set_ylabel('Gas production (MWh, log scale)')
-ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f'{x:,.0f}'))
-ax.legend(bbox_to_anchor=(1.01, 1), loc='upper left', fontsize=8, frameon=False)
-ax.grid(axis='y', linestyle='--', alpha=0.5)
-fig.tight_layout()
-_save(fig, 'rolling_gas_production_log.png')
 
-# --- Rolling solar production (log scale) ---
-fig, ax = plt.subplots(figsize=(13, 6))
-for bzone, group in plot_df.groupby('bzone'):
-    group = group.set_index('time').sort_index()
-    daily = group['solar_prod_yearly'].resample('D').mean()
-    daily = daily[daily > 0]
-    ax.plot(daily.index, daily.values, linewidth=2.5 if bzone == 'Latvia' else 1.2, label=bzone,
-            color=ZONE_COLORS.get(bzone))
-ax.set_yscale('log')
-ax.set_title('Rolling 365-day solar production (log scale)')
-ax.set_xlabel('Date')
-ax.set_ylabel('Solar production (MWh, log scale)')
-ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f'{x:,.0f}'))
-ax.legend(bbox_to_anchor=(1.01, 1), loc='upper left', fontsize=8, frameon=False)
-ax.grid(axis='y', linestyle='--', alpha=0.5)
-fig.tight_layout()
-_save(fig, 'rolling_solar_production_log.png')
+# # --- Rolling gas production (log scale) ---
+# fig, ax = plt.subplots(figsize=(13, 6))
+# for bzone, group in plot_df.groupby('bzone'):
+#     group = group.set_index('time').sort_index()
+#     daily = group['gas_prod_yearly'].resample('D').mean()
+#     daily = daily[daily > 0]
+#     ax.plot(daily.index, daily.values, linewidth=2.5 if bzone == 'Latvia' else 1.2, label=bzone,
+#             color=ZONE_COLORS.get(bzone))
+# ax.set_yscale('log')
+# ax.set_title('Rolling 365-day gas production (log scale)')
+# ax.set_xlabel('Date')
+# ax.set_ylabel('Gas production (MWh, log scale)')
+# ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f'{x:,.0f}'))
+# ax.legend(bbox_to_anchor=(1.01, 1), loc='upper left', fontsize=8, frameon=False)
+# ax.grid(axis='y', linestyle='--', alpha=0.5)
+# fig.tight_layout()
+# _save(fig, 'rolling_gas_production_log.png')
+
+# # --- Rolling solar production (log scale) ---
+# fig, ax = plt.subplots(figsize=(13, 6))
+# for bzone, group in plot_df.groupby('bzone'):
+#     group = group.set_index('time').sort_index()
+#     daily = group['solar_prod_yearly'].resample('D').mean()
+#     daily = daily[daily > 0]
+#     ax.plot(daily.index, daily.values, linewidth=2.5 if bzone == 'Latvia' else 1.2, label=bzone,
+#             color=ZONE_COLORS.get(bzone))
+# ax.set_yscale('log')
+# ax.set_title('Rolling 365-day solar production (log scale)')
+# ax.set_xlabel('Date')
+# ax.set_ylabel('Solar production (MWh, log scale)')
+# ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f'{x:,.0f}'))
+# ax.legend(bbox_to_anchor=(1.01, 1), loc='upper left', fontsize=8, frameon=False)
+# ax.grid(axis='y', linestyle='--', alpha=0.5)
+# fig.tight_layout()
+# _save(fig, 'rolling_solar_production_log.png')
 
 dataset_start = plot_df['time'].min()
 
@@ -192,3 +194,29 @@ ax.legend(bbox_to_anchor=(1.01, 1), loc='upper left', fontsize=8, frameon=False)
 ax.grid(axis='y', linestyle='--', alpha=0.5)
 fig.tight_layout()
 _save(fig, 'rolling_fossil_share.png')
+
+# Removable zones
+REMOVABLE_BZONES = ['IT_CALA', 'SE1', 'SE2', 'SE3', 'SE4', 'Cyprus', 'Germany', 'Croatia']  # Zones with very little or no gas/solar production, which can distort growth rate plots
+
+# --- Total generation (normalized to mean of H2 2020) ---
+fig, ax = plt.subplots(figsize=(13, 6))
+for bzone, group in plot_df.groupby('bzone'):
+    if bzone in REMOVABLE_BZONES:
+        continue
+    group = group.set_index('time').sort_index()
+    daily = group['total_generation_yearly'].resample('D').mean()
+    h2_2020 = daily['2020-07-01':'2020-12-31']
+    norm = h2_2020.mean()
+    if pd.isna(norm) or norm == 0:
+        continue
+    normalized = daily / norm
+    ax.plot(normalized.index, normalized.values, linewidth=2.5 if bzone == 'Latvia' else 1.2, label=bzone,
+            color=ZONE_COLORS.get(bzone))
+ax.axhline(1, color='black', linewidth=0.8, linestyle='--')
+ax.set_title('Total generation (rolling 365-day), normalized to mean H2 2020')
+ax.set_xlabel('Date')
+ax.set_ylabel('Normalized total generation (H2 2020 mean = 1)')
+ax.legend(bbox_to_anchor=(1.01, 1), loc='upper left', fontsize=8, frameon=False)
+ax.grid(axis='y', linestyle='--', alpha=0.5)
+fig.tight_layout()
+_save(fig, 'total_generation_normalized.png')
