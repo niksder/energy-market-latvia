@@ -45,50 +45,6 @@ di "Pre-war coal share by bzone:"
 table bzone, statistic(mean coal_share_pre)
 
 // =============================================================================
-// POST-INVASION INDICATOR  (Russia invaded Ukraine Feb 24 2022)
-// =============================================================================
-
-gen post = (date >= td(24feb2022))
-label var post "Post-invasion dummy (>= Feb 24 2022)"
-
-// =============================================================================
-// MAIN DiD REGRESSIONS
-//   Y_it = α_i + γ_t + β*(gas_share_pre_i × post_t) + weather + ε_it
-//
-//   α_i  = bzone fixed effects (absorbed by xtreg fe)
-//   γ_t  = date fixed effects (i.date controls for all common daily shocks,
-//           including seasonality; identified because weather varies
-//           cross-sectionally within each day)
-//   β    = DiD coefficient: extra solar output per pp of pre-war gas share
-//           in the post-invasion period, relative to pre-invasion
-//
-//   SE clustered at bzone level (N=14; interpret CI conservatively)
-// =============================================================================
-
-// Spec 1: solar share
-xtreg solar_share c.gas_share_pre#i.post /*solar_share_pre*/ ///
-    /*i.day_of_week*/ i.month, ///
-    fe vce(cluster bzone_id)
-eststo did_levels
-boottest c.gas_share_pre#1.post, boottype(wild) cluster(bzone_id) reps(9999) seed(42) // Wild cluster bootstrap for robust inference with few clusters
-
-di "DiD coef (levels): " %9.3f _b[c.gas_share_pre#1.post] ///
-   "  SE: " %9.3f _se[c.gas_share_pre#1.post]
-
-gen ln_solar_share = ln(solar_share + 1)
-label var ln_solar_share "ln(solar_share + 1)"
-
-// Spec 2: ln(solar_share + 1) — semi-elasticity interpretation
-xtreg ln_solar_share c.gas_share_pre#i.post /*solar_share_pre*/ ///
-    /*i.day_of_week*/ i.month, ///
-    fe vce(cluster bzone_id)
-eststo did_log
-boottest c.gas_share_pre#1.post, boottype(wild) cluster(bzone_id) reps(9999) seed(42) // Wild cluster bootstrap for robust inference with few clusters
-
-di "DiD coef (log): " %9.4f _b[c.gas_share_pre#1.post] ///
-   "  SE: " %9.4f _se[c.gas_share_pre#1.post]
-
-// =============================================================================
 // EVENT STUDY
 //   Y_it = α_i + γ_t + Σ_k β_k*(gas_share_pre_i × 1[hy_seq=k]) + weather + ε_it
 //
