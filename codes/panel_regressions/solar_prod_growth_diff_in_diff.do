@@ -4,8 +4,16 @@ clear
 cd "/home/niks/Projects/solar-power-latvia"
 do "codes/panel_regressions/load_daily_data.do"
 
-// Drop NL, GR, HU, PT, ES that have higher gas share than LV
-drop if bzone == "Netherlands" | bzone == "Greece" | bzone == "Hungary" | bzone == "Portugal" | bzone == "Spain" 
+
+drop if bzone == "Germany" | bzone == "Portugal" | bzone == "Romania" | bzone == "Hungary" | bzone == "Bulgaria" | bzone == "Czechia" | bzone == "Ireland" | bzone == "Netherlands" | bzone == "Greece" | bzone == "Estonia" | bzone == "Poland" | bzone == "Cyprus"
+
+//drop if bzone == "Germany" || bzone == "Bulgaria" || bzone == "Ireland" || bzone == "Czechia" || bzone == "Netherlands" || bzone == "Greece" || bzone == "Estonia" || bzone == "Poland" || bzone == "Cyprus"
+drop if bzone == "IT_NORTH" | bzone == "IT_CNOR" | bzone == "IT_CSUD" | bzone == "IT_SUD" | bzone == "IT_CALA" | bzone == "IT_SICI" | bzone == "IT_SARD" | bzone == "IT_SACOAC" | bzone == "IT_SACODC"
+
+drop if bzone == "Croatia" // Missing data in 2017-2018
+
+// drop if bzone == "IT_SACOAC" | bzone == "IT_SACODC" | bzone == "IT_CALA" | bzone == "SE1" | bzone == "SE2" | bzone == "SE3" | bzone == "SE4" | bzone == "Cyprus" | bzone == "Germany" | bzone == "Croatia"
+
 
 cap mkdir "outputs/panel/solar_diff_and_diff"
 
