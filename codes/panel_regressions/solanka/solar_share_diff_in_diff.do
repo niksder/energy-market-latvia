@@ -28,11 +28,28 @@ bysort bzone_id: egen solar_share_pre = max(_tmp2)
 drop _tmp2
 label var solar_share_pre "Solar share on Feb 23 2021 (pre-war baseline, 0–1)"
 
+// Pre-war other-fossil share: brown coal + coal gas + hard coal + oil + oil shale + peat
+gen _tmp3 = brown_coal_share + coal_gas_share + hard_coal_share + oil_share + oil_shale_share + peat_share if date == td(23feb2021)
+bysort bzone_id: egen other_fossil_share_pre = max(_tmp3)
+drop _tmp3
+label var other_fossil_share_pre "Non-gas fossil share on Feb 23 2021 (pre-war, 0–1)"
+
+// Pre-war population density (log, to handle skew)
+gen _tmp4 = population_density if date == td(23feb2021)
+bysort bzone_id: egen pop_density_pre = max(_tmp4)
+drop _tmp4
+gen ln_pop_density_pre = ln(pop_density_pre)
+label var ln_pop_density_pre "Log population density on Feb 23 2021 (pre-war)"
+
 // Verify treatment values
 di "Pre-war gas share by bzone:"
 table bzone, statistic(mean gas_share_pre)
 di "Pre-war solar share by bzone:"
 table bzone, statistic(mean solar_share_pre)
+di "Pre-war other fossil share by bzone:"
+table bzone, statistic(mean other_fossil_share_pre)
+di "Pre-war log population density by bzone:"
+table bzone, statistic(mean ln_pop_density_pre)
 
 // =============================================================================
 // EVENT STUDY
@@ -68,17 +85,27 @@ foreach k of local hy_pos_vals {
     if `k' != 8 {
         gen inter_hy`k' = gas_share_pre * (hy_seq_pos == `k')
         label var inter_hy`k' "gas_share_pre × (hy_seq_pos==`k')"
+        gen ctrl_hy`k' = other_fossil_share_pre * (hy_seq_pos == `k')
+        label var ctrl_hy`k' "other_fossil_share_pre × (hy_seq_pos==`k')"
+        gen ctrl2_hy`k' = ln_pop_density_pre * (hy_seq_pos == `k')
+        label var ctrl2_hy`k' "ln_pop_density_pre × (hy_seq_pos==`k')"
     }
 }
 
 local inter_vars ""
+local ctrl_vars ""
+local ctrl2_vars ""
 foreach k of local hy_pos_vals {
-    if `k' != 8 local inter_vars "`inter_vars' inter_hy`k'"
+    if `k' != 8 {
+        local inter_vars "`inter_vars' inter_hy`k'"
+        local ctrl_vars  "`ctrl_vars'  ctrl_hy`k'"
+        local ctrl2_vars "`ctrl2_vars' ctrl2_hy`k'"
+    }
 }
 
 // Two-way FE: bzone absorbed by xtreg fe, period absorbed by ib8.hy_seq_pos.
 // ib8 sets H2 2020 as the omitted base for both FE and interactions.
-xtreg solar_share `inter_vars' /*solar_share_pre*/ ///
+xtreg solar_share `inter_vars' `ctrl_vars' `ctrl2_vars' /*solar_share_pre*/ ///
     /*i.day_of_week*/ i.month ib8.hy_seq_pos, ///
     fe vce(cluster bzone_id)
 eststo event_solar
@@ -101,6 +128,12 @@ foreach k of local hy_pos_vals {
         scalar _es_ub_`i'     = 0
         scalar _es_wse_`i'    = 0
         scalar _es_wp_`i'     = .
+        scalar _ct_coef_`i'   = 0
+        scalar _ct_wse_`i'    = 0
+        scalar _ct_wp_`i'     = .
+        scalar _c2_coef_`i'   = 0
+        scalar _c2_wse_`i'    = 0
+        scalar _c2_wp_`i'     = .
         // scalar _es_lb90_`i'   = 0
         // scalar _es_ub90_`i'   = 0
     }
@@ -113,9 +146,16 @@ foreach k of local hy_pos_vals {
         scalar _es_ub_`i'     = r(CI)[1,2]
         scalar _es_wse_`i'    = (r(CI)[1,2] - r(CI)[1,1]) / (2 * invnormal(0.975))
         scalar _es_wp_`i'     = r(p)
-        // quietly boottest inter_hy`k', boottype(wild) cluster(bzone_id) reps(9999) seed(42) level(90)
-        // scalar _es_lb90_`i'   = r(CI)[1,1]
-        // scalar _es_ub90_`i'   = r(CI)[1,2]
+        // other-fossil control
+        scalar _ct_coef_`i'   = _b[ctrl_hy`k']
+        quietly boottest ctrl_hy`k', boottype(wild) cluster(bzone_id) reps(9999) seed(42) level(95)
+        scalar _ct_wse_`i'    = (r(CI)[1,2] - r(CI)[1,1]) / (2 * invnormal(0.975))
+        scalar _ct_wp_`i'     = r(p)
+        // population density control
+        scalar _c2_coef_`i'   = _b[ctrl2_hy`k']
+        quietly boottest ctrl2_hy`k', boottype(wild) cluster(bzone_id) reps(9999) seed(42) level(95)
+        scalar _c2_wse_`i'    = (r(CI)[1,2] - r(CI)[1,1]) / (2 * invnormal(0.975))
+        scalar _c2_wp_`i'     = r(p)
     }
     local i = `i' + 1
 }
@@ -188,10 +228,10 @@ file write `fh_tex' "\begin{table}[htbp]" _n
 file write `fh_tex' "\centering" _n
 file write `fh_tex' "\caption{Event study: effect of pre-war gas exposure on solar share}" _n
 file write `fh_tex' "\label{tab:event_study_solar_gas}" _n
-file write `fh_tex' "\begin{tabular}{lc}" _n
+file write `fh_tex' "\begin{tabular}{lccc}" _n
 file write `fh_tex' "\hline\hline" _n
-file write `fh_tex' "Period & Solar share \\" _n
-file write `fh_tex' " & {\footnotesize (wild cluster-robust SE)} \\" _n
+file write `fh_tex' "Period & Gas share (treatment) & Other fossil (control) & Ln pop. density (control) \\" _n
+file write `fh_tex' " & {\footnotesize (wild cluster-robust SE)} & {\footnotesize (wild cluster-robust SE)} & {\footnotesize (wild cluster-robust SE)} \\" _n
 file write `fh_tex' "\hline" _n
 
 forvalues i = 1/`nper' {
@@ -210,25 +250,43 @@ forvalues i = 1/`nper' {
 
     if `per_val' == 0 {
         // Reference period: H2 2020
-        file write `fh_tex' "`per_label' & 0 \\" _n
-        file write `fh_tex' "       & {\footnotesize \textit{(reference)}} \\" _n
+        file write `fh_tex' "`per_label' & 0 & 0 & 0 \\" _n
+        file write `fh_tex' "       & {\footnotesize \textit{(reference)}} & {\footnotesize \textit{(reference)}} & {\footnotesize \textit{(reference)}} \\" _n
     }
     else {
+        // treatment (gas)
         local coef_val = scalar(_es_coef_`i')
         local wse_val  = scalar(_es_wse_`i')
         local wp_val   = scalar(_es_wp_`i')
-
-        // Stars based on wild cluster bootstrap p-value
         if `wp_val' < 0.01      local stars "`d'^{***}`d'"
         else if `wp_val' < 0.05 local stars "`d'^{**}`d'"
         else if `wp_val' < 0.10 local stars "`d'^{*}`d'"
         else                    local stars ""
-
         local coef_str = strtrim(string(`coef_val', "%10.4f"))
         local wse_str  = strtrim(string(`wse_val',  "%10.4f"))
+        // control (other fossil)
+        local ct_coef_val = scalar(_ct_coef_`i')
+        local ct_wse_val  = scalar(_ct_wse_`i')
+        local ct_wp_val   = scalar(_ct_wp_`i')
+        if `ct_wp_val' < 0.01      local ct_stars "`d'^{***}`d'"
+        else if `ct_wp_val' < 0.05 local ct_stars "`d'^{**}`d'"
+        else if `ct_wp_val' < 0.10 local ct_stars "`d'^{*}`d'"
+        else                       local ct_stars ""
+        local ct_coef_str = strtrim(string(`ct_coef_val', "%10.4f"))
+        local ct_wse_str  = strtrim(string(`ct_wse_val',  "%10.4f"))
+        // control (log pop density)
+        local c2_coef_val = scalar(_c2_coef_`i')
+        local c2_wse_val  = scalar(_c2_wse_`i')
+        local c2_wp_val   = scalar(_c2_wp_`i')
+        if `c2_wp_val' < 0.01      local c2_stars "`d'^{***}`d'"
+        else if `c2_wp_val' < 0.05 local c2_stars "`d'^{**}`d'"
+        else if `c2_wp_val' < 0.10 local c2_stars "`d'^{*}`d'"
+        else                       local c2_stars ""
+        local c2_coef_str = strtrim(string(`c2_coef_val', "%10.4f"))
+        local c2_wse_str  = strtrim(string(`c2_wse_val',  "%10.4f"))
 
-        file write `fh_tex' "`per_label' & `coef_str'`stars' \\" _n
-        file write `fh_tex' "       & (`wse_str') \\" _n
+        file write `fh_tex' "`per_label' & `coef_str'`stars' & `ct_coef_str'`ct_stars' & `c2_coef_str'`c2_stars' \\" _n
+        file write `fh_tex' "       & (`wse_str') & (`ct_wse_str') & (`c2_wse_str') \\" _n
     }
 
     // Visual separator between last pre-invasion period (H2 2021) and first post-invasion (H1 2022)
@@ -241,10 +299,10 @@ local ev_N   = scalar(_ev_N)
 local ev_r2w = strtrim(string(scalar(_ev_r2w), "%6.4f"))
 
 file write `fh_tex' "\hline\hline" _n
-file write `fh_tex' "\multicolumn{2}{p{0.6\linewidth}}{\footnotesize" _n
+file write `fh_tex' "\multicolumn{4}{p{0.9\linewidth}}{\footnotesize" _n
 file write `fh_tex' " \textit{Note}: Two-way FE (bidding zone and semester)." _n
 file write `fh_tex' " Dependent variable: solar share (\%)." _n
-file write `fh_tex' " Treatment intensity: pre-war gas share." _n
+file write `fh_tex' " Treatment intensity: pre-war gas share. Controls: pre-war other-fossil share (brown coal, coal gas, hard coal, oil, oil shale, peat) and log pre-war population density." _n
 file write `fh_tex' " Reference period: H2~2020." _n
 file write `fh_tex' " Observations: `ev_N'; within \(R^2\): `ev_r2w'." _n
 file write `fh_tex' " Standard errors in parentheses are implied by the 95\% wild cluster bootstrap CI," _n
