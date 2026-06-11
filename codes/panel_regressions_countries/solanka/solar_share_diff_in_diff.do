@@ -4,6 +4,11 @@ clear
 cd "/home/niks/Projects/solar-power-latvia"
 do "codes/panel_regressions_countries/load_daily_data.do"
 
+// Count countries dynamically
+quietly levelsof country_id, local(_country_list)
+local n_countries : word count `_country_list'
+di "Number of countries in data: `n_countries'"
+
 cap mkdir "outputs/panel_countries/solar_diff_and_diff/solanka"
 
 // =============================================================================
@@ -23,60 +28,11 @@ bysort country_id: egen solar_share_pre = max(_tmp2)
 drop _tmp2
 label var solar_share_pre "Solar share on Feb 23 2022 (pre-war baseline, 0–1)"
 
-gen coal_share_pre = brown_coal_share + hard_coal_share
-label var coal_share_pre "Coal share on Feb 23 2022 (%)"
-
 // Verify treatment values
 di "Pre-war gas share by country:"
 table country, statistic(mean gas_share_pre)
 di "Pre-war solar share by country:"
 table country, statistic(mean solar_share_pre)
-di "Pre-war coal share by country:"
-table country, statistic(mean coal_share_pre)
-
-// =============================================================================
-// POST-INVASION INDICATOR  (Russia invaded Ukraine Feb 24 2022)
-// =============================================================================
-
-gen post = (date >= td(24feb2022))
-label var post "Post-invasion dummy (>= Feb 24 2022)"
-
-// =============================================================================
-// MAIN DiD REGRESSIONS
-//   Y_it = α_i + γ_t + β*(gas_share_pre_i × post_t) + weather + ε_it
-//
-//   α_i  = country fixed effects (absorbed by xtreg fe)
-//   γ_t  = date fixed effects (i.date controls for all common daily shocks,
-//           including seasonality; identified because weather varies
-//           cross-sectionally within each day)
-//   β    = DiD coefficient: extra solar output per pp of pre-war gas share
-//           in the post-invasion period, relative to pre-invasion
-//
-//   SE clustered at country level (N=14; interpret CI conservatively)
-// =============================================================================
-
-// Spec 1: solar share
-xtreg solar_share c.gas_share_pre#i.post /*solar_share_pre*/ ///
-    /*i.day_of_week*/ i.month, ///
-    fe vce(cluster country_id)
-eststo did_levels
-boottest c.gas_share_pre#1.post, boottype(wild) cluster(country_id) reps(9999) seed(42) // Wild cluster bootstrap for robust inference with few clusters
-
-di "DiD coef (levels): " %9.3f _b[c.gas_share_pre#1.post] ///
-   "  SE: " %9.3f _se[c.gas_share_pre#1.post]
-
-gen ln_solar_share = ln(solar_share + 1)
-label var ln_solar_share "ln(solar_share + 1)"
-
-// Spec 2: ln(solar_share + 1) — semi-elasticity interpretation
-xtreg ln_solar_share c.gas_share_pre#i.post /*solar_share_pre*/ ///
-    /*i.day_of_week*/ i.month, ///
-    fe vce(cluster country_id)
-eststo did_log
-boottest c.gas_share_pre#1.post, boottype(wild) cluster(country_id) reps(9999) seed(42) // Wild cluster bootstrap for robust inference with few clusters
-
-di "DiD coef (log): " %9.4f _b[c.gas_share_pre#1.post] ///
-   "  SE: " %9.4f _se[c.gas_share_pre#1.post]
 
 // =============================================================================
 // EVENT STUDY
@@ -127,6 +83,8 @@ xtreg solar_share `inter_vars' /*solar_share_pre*/ ///
     /*i.day_of_week*/ i.month ib8.hy_seq_pos, ///
     fe vce(cluster country_id)
 eststo event_solar
+scalar _ev_N   = e(N)
+scalar _ev_r2w = e(r2_w)
 
 /*     temperature hdd cdd wind ln_sun precipitation precipitation_weekly precipitation_monthly /// // excluded since weather does not affect solar growth */
 
@@ -142,6 +100,8 @@ foreach k of local hy_pos_vals {
         scalar _es_coef_`i'   = 0
         scalar _es_lb_`i'     = 0
         scalar _es_ub_`i'     = 0
+        scalar _es_wse_`i'    = 0
+        scalar _es_wp_`i'     = .
         scalar _es_lb90_`i'   = 0
         scalar _es_ub90_`i'   = 0
     }
@@ -152,6 +112,8 @@ foreach k of local hy_pos_vals {
         quietly boottest inter_hy`k', boottype(wild) cluster(country_id) reps(9999) seed(42) level(95) // Wild cluster bootstrap for robust inference with few clusters
         scalar _es_lb_`i'     = r(CI)[1,1]
         scalar _es_ub_`i'     = r(CI)[1,2]
+        scalar _es_wse_`i'    = (r(CI)[1,2] - r(CI)[1,1]) / (2 * invnormal(0.975))
+        scalar _es_wp_`i'     = r(p)
         quietly boottest inter_hy`k', boottype(wild) cluster(country_id) reps(9999) seed(42) level(90)
         scalar _es_lb90_`i'   = r(CI)[1,1]
         scalar _es_ub90_`i'   = r(CI)[1,2]
@@ -212,5 +174,91 @@ preserve
         replace width(1400) height(900)
 restore
 
+// =============================================================================
+// LATEX TABLE: Event Study Results (last regression)
+// =============================================================================
+local d = char(36)   // dollar sign for LaTeX math mode
+
+tempname fh_tex
+file open `fh_tex' using ///
+    "outputs/panel_countries/solar_diff_and_diff/solanka/event_study_solar_share.tex", ///
+    write replace
+
+file write `fh_tex' "\begin{table}[htbp]" _n
+file write `fh_tex' "\centering" _n
+file write `fh_tex' "\caption{Event study: effect of pre-war gas exposure on solar share}" _n
+file write `fh_tex' "\label{tab:event_study_solar_gas_countries}" _n
+file write `fh_tex' "\begin{tabular}{lc}" _n
+file write `fh_tex' "\hline\hline" _n
+file write `fh_tex' "Period & Solar share \\" _n
+file write `fh_tex' " & {\footnotesize (wild cluster-robust SE)} \\" _n
+file write `fh_tex' "\hline" _n
+
+forvalues i = 1/`nper' {
+    local per_val = scalar(_es_period_`i')
+    local k_val   = `per_val' + 8
+    // Compute period label: k_val odd → H1, even → H2
+    if mod(`k_val', 2) == 1 {
+        local sem "H1"
+        local yr  = 2017 + (`k_val' - 1) / 2
+    }
+    else {
+        local sem "H2"
+        local yr  = 2016 + `k_val' / 2
+    }
+    local per_label "`sem' `yr'"
+
+    if `per_val' == 0 {
+        // Reference period: H2 2020
+        file write `fh_tex' "`per_label' & 0 \\" _n
+        file write `fh_tex' "       & {\footnotesize \textit{(reference)}} \\" _n
+    }
+    else {
+        local coef_val = scalar(_es_coef_`i')
+        local wse_val  = scalar(_es_wse_`i')
+        local wp_val   = scalar(_es_wp_`i')
+
+        // Stars based on wild cluster bootstrap p-value
+        if `wp_val' < 0.01      local stars "`d'^{***}`d'"
+        else if `wp_val' < 0.05 local stars "`d'^{**}`d'"
+        else if `wp_val' < 0.10 local stars "`d'^{*}`d'"
+        else                    local stars ""
+
+        local coef_str = strtrim(string(`coef_val', "%10.4f"))
+        local wse_str  = strtrim(string(`wse_val',  "%10.4f"))
+
+        file write `fh_tex' "`per_label' & `coef_str'`stars' \\" _n
+        file write `fh_tex' "       & (`wse_str') \\" _n
+    }
+
+    // Visual separator between last pre-invasion period (H2 2021) and first post-invasion (H1 2022)
+    if `per_val' == 2 {
+        file write `fh_tex' "\hline" _n
+    }
+}
+
+local ev_N   = scalar(_ev_N)
+local ev_r2w = strtrim(string(scalar(_ev_r2w), "%6.4f"))
+
+file write `fh_tex' "\hline\hline" _n
+file write `fh_tex' "\multicolumn{2}{p{0.6\linewidth}}{\footnotesize" _n
+file write `fh_tex' " \textit{Note}: Two-way FE (country and semester)." _n
+file write `fh_tex' " Dependent variable: solar share (\%)." _n
+file write `fh_tex' " Treatment intensity: pre-war gas share." _n
+file write `fh_tex' " Reference period: H2~2020." _n
+file write `fh_tex' " Observations: `ev_N'; within \(R^2\): `ev_r2w'." _n
+file write `fh_tex' " Standard errors in parentheses are implied by the 95\% wild cluster bootstrap CI," _n
+file write `fh_tex' " clustered at the country level" _n
+file write `fh_tex' " (\(N=`n_countries'\) countries, 9{,}999 replications)." _n
+file write `fh_tex' " Stars indicate significance of the wild cluster bootstrap \(p\)-value:" _n
+file write `fh_tex' " `d'^{***}`d' \(p<0.01\)," _n
+file write `fh_tex' " `d'^{**}`d' \(p<0.05\)," _n
+file write `fh_tex' " `d'^{*}`d' \(p<0.10\).} \\" _n
+file write `fh_tex' "\end{tabular}" _n
+file write `fh_tex' "\end{table}" _n
+
+file close `fh_tex'
+
+di "LaTeX table saved to outputs/panel_countries/solar_diff_and_diff/solanka/event_study_solar_share.tex"
 di "Done. Outputs saved to outputs/panel_countries/solar_diff_and_diff/solanka/"
 
