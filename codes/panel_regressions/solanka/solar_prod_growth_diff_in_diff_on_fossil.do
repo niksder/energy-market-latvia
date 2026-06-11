@@ -6,6 +6,13 @@ do "codes/panel_regressions/load_daily_data.do"
 
 cap mkdir "outputs/panel/solar_diff_and_diff/solanka"
 
+drop if bzone == "Netherlands"   // Exclude Netherlands because of abnormal data
+
+// Count bzones dynamically
+quietly levelsof bzone_id, local(_bzone_list)
+local n_bzones : word count `_bzone_list'
+di "Number of bzones in data: `n_bzones'"
+
 // =============================================================================
 // TREATMENT VARIABLE: pre-war gas share (Feb 23 2022, last day before invasion)
 // gas_share is available from load_daily_data.do
@@ -49,18 +56,15 @@ label var ln_solar "ln(solar_prod_yearly + 1)"
 gen d_ln_solar = D.ln_solar
 label var d_ln_solar "Daily log-diff of ln(solar_prod_yearly+1)"
 
-// Drop first year of growth for bzones whose solar data appears after the
-// dataset start — the rolling 365-day sum isn't a full year yet, so the
-// log differences reflect data appearance, not real growth.
+// Drop first year of growth for every bzone — the rolling 365-day sum isn't a
+// full year yet at the start of each bzone's solar history, so the early log
+// differences reflect data appearance / ramp-up, not real growth.
 gen     _first_solar = date if solar_prod_yearly > 0 & !missing(solar_prod_yearly)
 bysort bzone_id: egen _solar_start = min(_first_solar)
 drop _first_solar
 format _solar_start %td
 
-quietly summarize date
-scalar _dataset_start = r(min)
-
-replace d_ln_solar = . if (_solar_start > _dataset_start) & (date <= _solar_start + 365)
+replace d_ln_solar = . if (date <= _solar_start + 365)
 drop _solar_start
 
 // =============================================================================
@@ -147,6 +151,9 @@ xtreg d_ln_solar `inter_vars' ///
     i.month ib8.hy_seq_pos, ///
     fe vce(cluster bzone_id)
 eststo event_solar_growth
+scalar _ev_N    = e(N)
+scalar _ev_r2w  = e(r2_w)
+scalar _ev_df_r = e(df_r)
 
 // =============================================================================
 // EVENT STUDY PLOT
@@ -158,18 +165,18 @@ foreach k of local hy_pos_vals {
     if `k' == 8 {
         scalar _es_period_`i' = `k' - 8
         scalar _es_coef_`i'   = 0
+        scalar _es_se_`i'     = 0
+        scalar _es_p_`i'      = .
         scalar _es_lb_`i'     = 0
         scalar _es_ub_`i'     = 0
-        scalar _es_lb90_`i'   = 0
-        scalar _es_ub90_`i'   = 0
     }
     else {
         scalar _es_period_`i' = `k' - 8
         scalar _es_coef_`i'   = _b[inter_hy`k']
+        scalar _es_se_`i'     = _se[inter_hy`k']
+        scalar _es_p_`i'      = 2 * ttail(scalar(_ev_df_r), abs(_b[inter_hy`k'] / _se[inter_hy`k']))
         scalar _es_lb_`i'     = _b[inter_hy`k'] - 1.96  * _se[inter_hy`k']
         scalar _es_ub_`i'     = _b[inter_hy`k'] + 1.96  * _se[inter_hy`k']
-        scalar _es_lb90_`i'   = _b[inter_hy`k'] - 1.645 * _se[inter_hy`k']
-        scalar _es_ub90_`i'   = _b[inter_hy`k'] + 1.645 * _se[inter_hy`k']
     }
     local i = `i' + 1
 }
@@ -181,23 +188,18 @@ preserve
     gen coef   = .
     gen lb95   = .
     gen ub95   = .
-    gen lb90   = .
-    gen ub90   = .
 
     forvalues i = 1/`nper' {
         replace period = _es_period_`i' in `i'
         replace coef   = _es_coef_`i'   in `i'
         replace lb95   = _es_lb_`i'     in `i'
         replace ub95   = _es_ub_`i'     in `i'
-        replace lb90   = _es_lb90_`i'   in `i'
-        replace ub90   = _es_ub90_`i'   in `i'
     }
 
     sort period
 
     twoway ///
-        (rcap lb95 ub95 period, lcolor(navy%30)) ///
-        (rcap lb90 ub90 period, lcolor(navy%55)) ///
+        (rcap lb95 ub95 period, lcolor(navy%50)) ///
         (connected coef period, ///
             mcolor(navy) lcolor(navy) msymbol(circle) lpattern(solid)), ///
         yline(0, lpattern(dash) lcolor(gray)) ///
@@ -211,11 +213,12 @@ preserve
             angle(45) labsize(small)) ///
         legend(off) ///
         xtitle("Half-year period") ///
-        ytitle("Coef (daily log-diff per pp of pre-war gas share)") ///
+        ytitle("Coef (log-diff per pp gas share)", size(small)) ///
         title("Effect of pre-war gas exposure on solar production growth rate") ///
-        subtitle("DiD event study (outcome: D.ln solar); reference = H2 2020; red line = invasion Feb 24 2022") ///
-        note("Two-way FE (bzone + date). Controls: sun, temperature, ln_precipitation." ///
-             "SE clustered at bzone level (N = 14 bzones).", size(vsmall)) ///
+        subtitle("DiD event study; ref = H2 2020; red line = invasion Feb 24 2022") ///
+        note("Two-way FE (bzone + semester). SE clustered at bzone level (N = `n_bzones' bzones)." ///
+             "95% CI shown.", size(vsmall)) ///
+        graphregion(margin(l=10)) ///
         scheme(s2color)
 
     graph export "outputs/panel/solar_diff_and_diff/solanka/event_study_solar_production_growth_on_fossil.png", ///
@@ -233,12 +236,9 @@ preserve
     gen cum_se    = sqrt(sum(se95^2))
     gen cum_lb95  = cum_coef - 1.96  * cum_se
     gen cum_ub95  = cum_coef + 1.96  * cum_se
-    gen cum_lb90  = cum_coef - 1.645 * cum_se
-    gen cum_ub90  = cum_coef + 1.645 * cum_se
 
     twoway ///
-        (rcap cum_lb95 cum_ub95 period, lcolor(navy%30)) ///
-        (rcap cum_lb90 cum_ub90 period, lcolor(navy%55)) ///
+        (rcap cum_lb95 cum_ub95 period, lcolor(navy%50)) ///
         (connected cum_coef period, ///
             mcolor(navy) lcolor(navy) msymbol(circle) lpattern(solid)), ///
         yline(0, lpattern(dash) lcolor(gray)) ///
@@ -252,11 +252,12 @@ preserve
             angle(45) labsize(small)) ///
         legend(off) ///
         xtitle("Half-year period") ///
-        ytitle("Accumulated coef (daily log-diff per pp of pre-war gas share)") ///
-        title("Accumulated effect of pre-war gas exposure on solar production growth rate") ///
-        subtitle("Cumulative sum of event-study coefs; reference = H2 2020; red line = invasion Feb 24 2022") ///
-        note("CIs computed as ±1.96 × sqrt(Σ SE²) — assumes independence across periods (approximation)." ///
-             "SE clustered at bzone level (N = 14 bzones).", size(vsmall)) ///
+        ytitle("Accumulated coef (log-diff per pp gas share)", size(small)) ///
+        title("Accumulated pre-war gas exposure effect on solar growth rate") ///
+        subtitle("Cumulative sum of event-study coefs; ref = H2 2020; red line = invasion Feb 24 2022") ///
+        note("CIs: ±1.96 × sqrt(Σ SE²), assuming period independence (approximation)." ///
+             "SE clustered at bzone level (N = `n_bzones' bzones). 95% CI shown.", size(vsmall)) ///
+        graphregion(margin(l=10)) ///
         scheme(s2color)
 
     graph export "outputs/panel/solar_diff_and_diff/solanka/event_study_solar_production_growth_on_fossil_accumulated.png", ///
@@ -265,5 +266,89 @@ preserve
 
 restore
 
+// =============================================================================
+// LATEX TABLE: Event Study Results (last regression)
+// =============================================================================
+local d = char(36)   // dollar sign for LaTeX math mode
+
+tempname fh_tex
+file open `fh_tex' using ///
+    "outputs/panel/solar_diff_and_diff/solanka/event_study_solar_production_growth_on_fossil.tex", ///
+    write replace
+
+file write `fh_tex' "\begin{table}[htbp]" _n
+file write `fh_tex' "\centering" _n
+file write `fh_tex' "\caption{Event study: effect of pre-war gas exposure on solar production growth rate}" _n
+file write `fh_tex' "\label{tab:event_study_solar_growth_fossil}" _n
+file write `fh_tex' "\begin{tabular}{lc}" _n
+file write `fh_tex' "\hline\hline" _n
+file write `fh_tex' "Period & Solar prod. growth rate \\" _n
+file write `fh_tex' " & {\footnotesize (cluster-robust SE)} \\" _n
+file write `fh_tex' "\hline" _n
+
+forvalues i = 1/`nper' {
+    local per_val = scalar(_es_period_`i')
+    local k_val   = `per_val' + 8
+    // Compute period label: k_val odd → H1, even → H2
+    if mod(`k_val', 2) == 1 {
+        local sem "H1"
+        local yr  = 2017 + (`k_val' - 1) / 2
+    }
+    else {
+        local sem "H2"
+        local yr  = 2016 + `k_val' / 2
+    }
+    local per_label "`sem' `yr'"
+
+    if `per_val' == 0 {
+        // Reference period: H2 2020
+        file write `fh_tex' "`per_label' & 0 \\" _n
+        file write `fh_tex' "       & {\footnotesize \textit{(reference)}} \\" _n
+    }
+    else {
+        local coef_val = scalar(_es_coef_`i')
+        local se_val   = scalar(_es_se_`i')
+        local p_val    = scalar(_es_p_`i')
+
+        // Stars based on cluster-robust p-value
+        if `p_val' < 0.01      local stars "`d'^{***}`d'"
+        else if `p_val' < 0.05 local stars "`d'^{**}`d'"
+        else if `p_val' < 0.10 local stars "`d'^{*}`d'"
+        else                    local stars ""
+
+        local coef_str = strtrim(string(`coef_val', "%10.6f"))
+        local se_str   = strtrim(string(`se_val',   "%10.6f"))
+
+        file write `fh_tex' "`per_label' & `coef_str'`stars' \\" _n
+        file write `fh_tex' "       & (`se_str') \\" _n
+    }
+
+    // Visual separator between last pre-invasion period (H2 2021) and first post-invasion (H1 2022)
+    if `per_val' == 2 {
+        file write `fh_tex' "\hline" _n
+    }
+}
+
+local ev_N   = scalar(_ev_N)
+local ev_r2w = strtrim(string(scalar(_ev_r2w), "%6.4f"))
+
+file write `fh_tex' "\hline\hline" _n
+file write `fh_tex' "\multicolumn{2}{p{0.6\linewidth}}{\footnotesize" _n
+file write `fh_tex' " \textit{Note}: Two-way FE (bidding zone and semester)." _n
+file write `fh_tex' " Dependent variable: daily log-difference of solar production (growth rate)." _n
+file write `fh_tex' " Treatment intensity: pre-war gas share (\%)." _n
+file write `fh_tex' " Reference period: H2~2020." _n
+file write `fh_tex' " Observations: `ev_N'; within \(R^2\): `ev_r2w'." _n
+file write `fh_tex' " Standard errors in parentheses are clustered at the bidding-zone level" _n
+file write `fh_tex' " (\(N=`n_bzones'\) bidding zones)." _n
+file write `fh_tex' " Stars indicate significance: `d'^{***}`d' \(p<0.01\)," _n
+file write `fh_tex' " `d'^{**}`d' \(p<0.05\)," _n
+file write `fh_tex' " `d'^{*}`d' \(p<0.10\).} \\" _n
+file write `fh_tex' "\end{tabular}" _n
+file write `fh_tex' "\end{table}" _n
+
+file close `fh_tex'
+
+di "LaTeX table saved to outputs/panel/solar_diff_and_diff/solanka/event_study_solar_production_growth_on_fossil.tex"
 di "Done. Outputs saved to outputs/panel/solar_diff_and_diff/solanka/"
 
